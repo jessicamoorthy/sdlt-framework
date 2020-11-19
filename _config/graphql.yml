@@ -1,3 +1,6 @@
+---
+Name: sdltgraphql
+---  
 SilverStripe\Control\Director:
   # Transparently deals with http vs https and assumes we're forcing HTTPS
   alternate_base_url: '/'
