@@ -1221,13 +1221,32 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                     $questionnaireSubmission->RiskResultData = $questionnaireSubmission->getRiskResultBasedOnAnswer();
                     $questionnaireSubmission->write();
 
-                    // create task submission based on answer
+                    // create task submissions based on answer
                     Question::create_task_submissions_according_to_answers(
                         $questionnaireSubmission->QuestionnaireData,
                         $questionnaireSubmission->AnswerData,
                         $questionnaireSubmission->ID,
                         $questionnaireSubmission->QuestionnaireLevelTaskIDs
                     );
+
+                    // once all task created
+                    if ($questionnaireSubmission->TaskSubmissions()->count()) {
+
+                        // get cva task
+                        $cvaTasksubmission = $questionnaireSubmission->TaskSubmissions()
+                            ->find('Task.TaskType', 'control validation audit');
+
+                        // check if component selection task exists
+                        $isComponentSelectionExist = $cvaTasksubmission->getSiblingTaskSubmissionsByType('selection');
+
+                        // defult cva task if component selection task does not exist
+                        // then change the status to complete
+                        if ($cvaTasksubmission && empty($isComponentSelectionExist)) {
+                            $cvaTasksubmission->Status = TaskSubmission::STATUS_COMPLETE;
+                            $cvaTasksubmission->write();
+                        }
+                    }
+
 
                     // bypass the approvals
                     // if bypass flag is set and there is no task to complete
@@ -2194,26 +2213,6 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
             }
 
             return $email;
-        }
-    }
-
-    /**
-     * create questionnaire level task
-     *
-     * @param DataObject $questionnaire questionnaire
-     *
-     * @return void
-     */
-    public function createTasks($questionnaire)
-    {
-        $tasks = $questionnaire->Tasks();
-
-        foreach ($tasks as $task) {
-            $taskSubmission = TaskSubmission::create_task_submission(
-                $task->ID,
-                $this->ID,
-                $this->User->ID
-            );
         }
     }
 
