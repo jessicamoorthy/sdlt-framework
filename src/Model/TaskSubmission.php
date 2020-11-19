@@ -264,12 +264,16 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
     public function calculateSecurityRiskAssessmentData()
     {
         if ($this->TaskType === 'security risk assessment') {
-            $sraCalculator = SecurityRiskAssessmentCalculator::create(
-                $this->QuestionnaireSubmission()
-            );
+           if($this->Status === 'complete' && !empty($this->AnswerData)) {
+               $this->securityRiskAssessmentData = $this->AnswerData;
+           } else {
+               $sraCalculator = SecurityRiskAssessmentCalculator::create(
+                   $this->QuestionnaireSubmission()
+               );
 
-            $this->securityRiskAssessmentData = json_encode($sraCalculator->getSRATaskdetails());
-        }
+               $this->securityRiskAssessmentData = json_encode($sraCalculator->getSRATaskdetails());
+           }
+       }
     }
 
     /**
@@ -937,6 +941,11 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     // TODO: validate based on answer
                     if (isset($args['Result'])) {
                         $submission->Result = trim($args['Result']);
+                    }
+
+                    if ($submission->TaskType === 'security risk assessment') {
+                        $submission->SecurityRiskAssessmentData = $submission->calculateSecurityRiskAssessmentData();
+                        $submission->AnswerData = $submission->SecurityRiskAssessmentData;
                     }
 
                     // create another tasks form task submission based on task submission's answer
