@@ -15,12 +15,20 @@ namespace NZTA\SDLT\Extension;
 
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Group;
+use NZTA\SDLT\Model\Questionnaire;
 
 /**
  * Class GroupExtension
  */
 class GroupExtension extends DataExtension
 {
+    /**
+     * @var array
+     */
+    private static $belongs_many_many = [
+        'Questionnaires' => Questionnaire::class,
+    ];
+
     /**
      * find or create a new group from the given $title string
      *

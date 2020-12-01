@@ -60,7 +60,9 @@ class SendStartLinkEmailJob extends AbstractQueuedJob implements QueuedJob
     {
         $emailDetails = QuestionnaireEmail::get()->First();
 
-        $sub = $this->replaceVariable($emailDetails->StartLinkEmailSubject);
+        $sub = $this->questionnaireSubmission->replaceVariable(
+            $emailDetails->StartLinkEmailSubject
+        );
         $from = $emailDetails->FromEmailAddress;
         $to = $this->questionnaireSubmission->SubmitterEmail;
 
@@ -68,7 +70,9 @@ class SendStartLinkEmailJob extends AbstractQueuedJob implements QueuedJob
             ->setHTMLTemplate('Email\\EmailTemplate')
             ->setData([
                 'SubmitterName' => $this->questionnaireSubmission->SubmitterName,
-                'Body' => $this->replaceVariable($emailDetails->StartLinkEmailBody),
+                'Body' =>$this->questionnaireSubmission->replaceVariable(
+                    $emailDetails->StartLinkEmailBody
+                ),
                 'EmailSignature' => $emailDetails->EmailSignature
             ])
             ->setFrom($from)
@@ -79,21 +83,5 @@ class SendStartLinkEmailJob extends AbstractQueuedJob implements QueuedJob
         $email->send();
 
         $this->isComplete = true;
-    }
-
-    /**
-     * @param string $string string
-     * @return string
-     */
-    public function replaceVariable($string)
-    {
-        $questionnaireName = $this->questionnaireSubmission->Questionnaire()->Name;
-        $link = $this->questionnaireSubmission->getStartLink();
-        $startLink = '<a href="' . $link . '">this link</a>';
-
-        $string = str_replace('{$questionnaireName}', $questionnaireName, $string);
-        $string = str_replace('{$startLink}', $startLink, $string);
-
-        return $string;
     }
 }

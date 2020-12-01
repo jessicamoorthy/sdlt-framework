@@ -60,14 +60,18 @@ class SendDeniedNotificationEmailJob extends AbstractQueuedJob implements Queued
     public function process()
     {
         $emailDetails = QuestionnaireEmail::get()->first();
-        $sub = $this->replaceVariable($emailDetails->DeniedNotificationEmailSubject);
+        $sub = $this->questionnaireSubmission->replaceVariable(
+            $emailDetails->DeniedNotificationEmailSubject
+        );
         $from = $emailDetails->FromEmailAddress;
 
         $email = Email::create()
             ->setHTMLTemplate('Email\\EmailTemplate')
             ->setData([
                 'Name' => $this->questionnaireSubmission->SubmitterName,
-                'Body' => $this->replaceVariable($emailDetails->DeniedNotificationEmailBody),
+                'Body' =>$this->questionnaireSubmission->replaceVariable(
+                    $emailDetails->DeniedNotificationEmailBody
+                ),
                 'EmailSignature' => $emailDetails->EmailSignature
             ])
             ->setFrom($from)
@@ -77,19 +81,5 @@ class SendDeniedNotificationEmailJob extends AbstractQueuedJob implements Queued
         $email->send();
 
         $this->isComplete = true;
-    }
-
-    /**
-     * @param string $string string
-     * @return string
-     */
-    public function replaceVariable($string)
-    {
-        $questionnaireName = $this->questionnaireSubmission->Questionnaire()->Name;
-        $productName = $this->questionnaireSubmission->ProductName;
-
-        $string = str_replace('{$questionnaireName}', $questionnaireName, $string);
-        $string = str_replace('{$productName}', $productName, $string);
-        return $string;
     }
 }
