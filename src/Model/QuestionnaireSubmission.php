@@ -1267,11 +1267,13 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                         // defult cva task if component selection task does not exist
                         // then change the status to complete
                         if ($cvaTasksubmission && empty($isComponentSelectionExist)) {
-                            $cvaTasksubmission->Status = TaskSubmission::STATUS_COMPLETE;
-                            $cvaTasksubmission->write();
+                            $cvaTasksubmission->CVATaskData = $cvaTasksubmission->getDataforCVATask(NULL);
+                            if (!empty(json_decode($cvaTasksubmission->CVATaskData))) {
+                                $cvaTasksubmission->Status = TaskSubmission::STATUS_COMPLETE;
+                                $cvaTasksubmission->write();
+                            }
                         }
                     }
-
 
                     // bypass the approvals
                     // if bypass flag is set and there is no task to complete
@@ -1330,6 +1332,12 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                     // Mark all related task submissions as "invalid"
                     $questionnaireSubmission->TaskSubmissions()->each(function (TaskSubmission $taskSubmission) {
                         $taskSubmission->Status = TaskSubmission::STATUS_INVALID;
+                        if ($taskSubmission->getTaskType() == 'control validation audit') {
+                            $taskSubmission->CVATaskData = '';
+                        }
+                        if ($taskSubmission->getTaskType() == 'security risk assessment') {
+                            $taskSubmission->AnswerData = '';
+                        }
                         $taskSubmission->write();
                     });
 
