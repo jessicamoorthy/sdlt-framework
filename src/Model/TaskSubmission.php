@@ -2134,17 +2134,36 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
             return $out;
         }
 
-        foreach ($selectedComponents as $comp) {
-            $controls = $comp->Controls();
+        $productAspects = json_decode($this->getProductAspects());
 
-            $cvaControls = $this->getLocalAndDefaultCVAControls($controls);
+        if (!empty($productAspects)) {
+            foreach ($productAspects as $productAspect) {
+                foreach ($selectedComponents as $comp) {
+                    $controls = $comp->Controls();
 
-            $out[] = [
-                'id' => $comp->ID,
-                'name' => $comp->Name,
-                'productAspect' => $comp->ProductAspect,
-                'controls' => $cvaControls
-            ];
+                    $cvaControls = $this->getLocalAndDefaultCVAControls($controls);
+
+                    $out[] = [
+                        'id' => $comp->ID,
+                        'name' => $comp->Name,
+                        'productAspect' => $productAspect,
+                        'controls' => $cvaControls
+                    ];
+                }
+            }
+        } else {
+            foreach ($selectedComponents as $comp) {
+                $controls = $comp->Controls();
+
+                $cvaControls = $this->getLocalAndDefaultCVAControls($controls);
+
+                $out[] = [
+                    'id' => $comp->ID,
+                    'name' => $comp->Name,
+                    'productAspect' => '',
+                    'controls' => $cvaControls
+                ];
+            }
         }
 
         return $out;

@@ -812,10 +812,10 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
                     . ' security components will be selected for the security'
                     . ' risk assessment task. They will appear as selected'
                     . ' components in the task submission.'
-                    . '<br/><br/><strong>Note: </strong>'
+                    . '<br/><p><strong>Note: </strong>'
                     . 'The selected components of the component selection task'
                     . ' will always override the default components specified'
-                    . ' here.'
+                    . ' here.</p>'
                 )
             );
         }
