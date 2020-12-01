@@ -27,10 +27,12 @@ use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use NZTA\SDLT\Traits\SDLTModelPermissions;
 use SilverStripe\Security\Permission;
 use NZTA\SDLT\ModelAdmin\QuestionnaireAdmin;
+use NZTA\SDLT\Model\QuestionnaireEmail;
 use NZTA\SDLT\Helper\Utils;
 use NZTA\SDLT\Traits\SDLTRiskCalc;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\OptionsetField;
+use SilverStripe\Forms\ListboxField;
 use SilverStripe\Security\PermissionProvider;
 use SilverStripe\Security\Member;
 
@@ -89,6 +91,7 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
         'ApprovalIsNotRequired' => 'Boolean',
         'DoesSubmissionExpire' => "Enum('No,Yes', 'Yes')",
         'ExpireAfterDays' => 'Int',
+        'SendEmailsToApprovalGroup' => "Enum('No,Yes', 'No')",
         'HideRiskWeightsAndScore' => 'Boolean'
     ];
 
@@ -98,6 +101,7 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
     private static $defaults = [
         'ExpireAfterDays' => 14,
         'DoesSubmissionExpire' => 'Yes',
+        'SendEmailsToApprovalGroup' => 'No',
     ];
 
     /**
@@ -119,6 +123,7 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
      */
     private static $many_many = [
         'Tasks' => Task::class,
+        'SubmissionEmailApprovalGroup' => Group::class
     ];
 
     /**
@@ -170,10 +175,12 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
 
         $typeField = $fields->dataFieldByName('Type');
         $riskField = $fields->dataFieldByName('RiskCalculation');
+        $approvalGroupField = $fields->dataFieldByName('SubmissionEmailApprovalGroup');
         $fields->removeByName([
             'PillarID',
             'Type',
-            'RiskCalculation'
+            'RiskCalculation',
+            'SubmissionEmailApprovalGroup'
         ]);
 
         if ($questions) {
@@ -255,6 +262,27 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
                     )
                     ->displayIf('DoesSubmissionExpire')
                     ->isEqualTo('Yes')
+                    ->end(),
+
+                OptionsetField::create(
+                    'SendEmailsToApprovalGroup',
+                    'Send Submission Emails to Approval Group?',
+                    $this->dbObject('SendEmailsToApprovalGroup')->enumValues()
+                )->setDescription(
+                    sprintf(
+                        '<p>If this is not set, submission emails will not'
+                        . ' be sent to the selected approval groups.</p>'
+                        . '<p>Please click on the <a href="%s"> Email Format Link </a>'
+                        . 'to add and edit the email format.</p>',
+                        $this->getQuestionaireEmailLink()
+                    )
+                ),
+
+                ListboxField::create('SubmissionEmailApprovalGroup', 'Select Approval Group to Send Submission Email')
+                    ->setSource(Group::get())
+                    ->setValue(Group::get()->find('Code', UserGroupConstant::GROUP_CODE_SA)->ID)
+                    ->displayIf('SendEmailsToApprovalGroup')
+                    ->isEqualTo('Yes')
                     ->end()
             ],
             'ApprovalIsNotRequired'
@@ -301,6 +329,21 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
     public function isRiskType() : bool
     {
         return $this->Type === 'RiskQuestionnaire' && $this->RiskCalculation;
+    }
+
+    /**
+     * @return string
+     */
+    public function getQuestionaireEmailLink()
+    {
+        $questionnaireEmail = QuestionnaireEmail::get()->first();
+        if ($questionnaireEmail) {
+            $id = $questionnaireEmail->ID;
+            $link = sprintf('admin/questionnaire-admin/NZTA-SDLT-Model-QuestionnaireEmail/EditForm/field/NZTA-SDLT-Model-QuestionnaireEmail/item/%d', $id);
+        } else {
+            $link = 'admin/questionnaire-admin/NZTA-SDLT-Model-QuestionnaireEmail/EditForm/field/NZTA-SDLT-Model-QuestionnaireEmail/item/new';
+        }
+        return $link;
     }
 
     /**
@@ -539,6 +582,10 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
                     . ' days.'
                 );
             }
+        }
+        // validation for SendEmailsToApprovalGroup
+        if ($this->SendEmailsToApprovalGroup == 'Yes' && !$this->SubmissionEmailApprovalGroup()->first()) {
+            $result->addError('Please select submission approval groups.');
         }
 
         return $result;
