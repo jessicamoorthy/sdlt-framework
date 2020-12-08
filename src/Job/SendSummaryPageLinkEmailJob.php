@@ -62,7 +62,9 @@ class SendSummaryPageLinkEmailJob extends AbstractQueuedJob implements QueuedJob
     {
         $emailDetails = QuestionnaireEmail::get()->first();
 
-        $sub = $this->replaceVariable($emailDetails->SummaryLinkEmailSubject);
+        $sub = $this->questionnaireSubmission->replaceVariable(
+            $emailDetails->SummaryLinkEmailSubject
+        );
         $from = $emailDetails->FromEmailAddress;
         $to = $this->questionnaireSubmission->SubmitterEmail;
 
@@ -70,34 +72,17 @@ class SendSummaryPageLinkEmailJob extends AbstractQueuedJob implements QueuedJob
             ->setHTMLTemplate('Email\\EmailTemplate')
             ->setData([
                 'Name' => $this->questionnaireSubmission->SubmitterName,
-                'Body' => $this->replaceVariable($emailDetails->SummaryLinkEmailBody),
+                'Body' => $this->questionnaireSubmission->replaceVariable(
+                    $emailDetails->SummaryLinkEmailBody
+                ),
                 'EmailSignature' => $emailDetails->EmailSignature
             ])
             ->setFrom($from)
             ->setTo($to)
             ->setSubject($sub);
 
-
         $email->send();
 
         $this->isComplete = true;
-    }
-
-    /**
-     * @param string $string string
-     * @return string
-     */
-    public function replaceVariable($string)
-    {
-        $questionnaireName = $this->questionnaireSubmission->Questionnaire()->Name;
-        $link = $this->questionnaireSubmission->getSummaryPageLink();
-        $productName = $this->questionnaireSubmission->ProductName;
-        $summaryLink = '<a href="' . $link . '">this link</a>';
-
-        $string = str_replace('{$questionnaireName}', $questionnaireName, $string);
-        $string = str_replace('{$summaryLink}', $summaryLink, $string);
-        $string = str_replace('{$productName}', $productName, $string);
-
-        return $string;
     }
 }

@@ -22,6 +22,7 @@ use SilverStripe\GraphQL\Scaffolding\Interfaces\ResolverInterface;
 use SilverStripe\GraphQL\Scaffolding\Interfaces\ScaffoldingProvider;
 use SilverStripe\GraphQL\Scaffolding\Scaffolders\SchemaScaffolder;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\ArrayList;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use SilverStripe\Security\Group;
@@ -30,6 +31,7 @@ use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Symbiote\QueuedJobs\DataObjects\QueuedJobDescriptor;
 use NZTA\SDLT\Job\SendStartLinkEmailJob;
 use NZTA\SDLT\Job\SendSummaryPageLinkEmailJob;
+use NZTA\SDLT\Job\SendQuestionnaireSubmittedEmailJob;
 use NZTA\SDLT\Job\SendApprovalLinkEmailJob;
 use NZTA\SDLT\Job\SendDeniedNotificationEmailJob;
 use NZTA\SDLT\Job\SendApprovedNotificationEmailJob;
@@ -95,6 +97,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         'IsStartLinkEmailSent' => 'Boolean',
         'IsEmailSentToSecurityArchitect' => 'Boolean',
         'IsSubmitLinkEmailSent' => 'Boolean',
+        'IsQuestionnaireSubmittedEmailSent' => 'Boolean',
         'CisoApprovalStatus' => 'Enum(array("not_applicable", "pending", "approved", "denied", "not_required"))',
         'CisoApproverIPAddress' => 'Varchar(255)',
         'CisoApproverMachineName' => 'Varchar(255)',
@@ -983,6 +986,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                     // set email and approval override flag
                     $model->IsStartLinkEmailSent = 0;
                     $model->IsEmailSentToSecurityArchitect = 0;
+                    $model->IsQuestionnaireSubmittedEmailSent = 0;
                     $model->ApprovalOverrideBySecurityArchitect = $model->isApprovalOverriddenBy();
 
                     // set questioonaire level task ids
@@ -1217,17 +1221,59 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                         );
                     }
 
+                    if ($questionnaireSubmission->Questionnaire()->SendEmailsToApprovalGroup == 'Yes'
+                        && !$questionnaireSubmission->IsQuestionnaireSubmittedEmailSent) {
+                        $groups = $questionnaireSubmission->Questionnaire()->SubmissionEmailApprovalGroup();
+                        $members = array();
+                        if ($groups) {
+                            foreach ($groups as $group) {
+                                foreach($group->Members() as $member) {
+                                    array_push($members, $member);
+                                }
+                            }
+                        }
+                        $questionnaireSubmission->IsQuestionnaireSubmittedEmailSent = 1;
+
+                        $queuedJobService->queueJob(
+                            new SendQuestionnaireSubmittedEmailJob($questionnaireSubmission, $members),
+                            date('Y-m-d H:i:s', time() + 30)
+                        );
+                    }
+
                     // calculte risk based on answer
                     $questionnaireSubmission->RiskResultData = $questionnaireSubmission->getRiskResultBasedOnAnswer();
                     $questionnaireSubmission->write();
 
-                    // create task submission based on answer
+                    // create task submissions based on answer
                     Question::create_task_submissions_according_to_answers(
                         $questionnaireSubmission->QuestionnaireData,
                         $questionnaireSubmission->AnswerData,
                         $questionnaireSubmission->ID,
                         $questionnaireSubmission->QuestionnaireLevelTaskIDs
                     );
+
+                    // once all task created
+                    if ($questionnaireSubmission->TaskSubmissions()->count()) {
+
+                        // get cva task
+                        $cvaTasksubmission = $questionnaireSubmission->TaskSubmissions()
+                            ->find('Task.TaskType', 'control validation audit');
+
+                        // check if component selection task exists
+                        if ($cvaTasksubmission) {
+                            $isComponentSelectionExist = $cvaTasksubmission->getSiblingTaskSubmissionsByType('selection');
+                        }
+
+                        // defult cva task if component selection task does not exist
+                        // then change the status to complete
+                        if ($cvaTasksubmission && empty($isComponentSelectionExist)) {
+                            $cvaTasksubmission->CVATaskData = $cvaTasksubmission->getDataforCVATask(NULL);
+                            if (!empty(json_decode($cvaTasksubmission->CVATaskData))) {
+                                $cvaTasksubmission->Status = TaskSubmission::STATUS_COMPLETE;
+                                $cvaTasksubmission->write();
+                            }
+                        }
+                    }
 
                     // bypass the approvals
                     // if bypass flag is set and there is no task to complete
@@ -1286,6 +1332,12 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                     // Mark all related task submissions as "invalid"
                     $questionnaireSubmission->TaskSubmissions()->each(function (TaskSubmission $taskSubmission) {
                         $taskSubmission->Status = TaskSubmission::STATUS_INVALID;
+                        if ($taskSubmission->getTaskType() == 'control validation audit') {
+                            $taskSubmission->CVATaskData = '';
+                        }
+                        if ($taskSubmission->getTaskType() == 'security risk assessment') {
+                            $taskSubmission->AnswerData = '';
+                        }
                         $taskSubmission->write();
                     });
 
@@ -2198,26 +2250,6 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
     }
 
     /**
-     * create questionnaire level task
-     *
-     * @param DataObject $questionnaire questionnaire
-     *
-     * @return void
-     */
-    public function createTasks($questionnaire)
-    {
-        $tasks = $questionnaire->Tasks();
-
-        foreach ($tasks as $task) {
-            $taskSubmission = TaskSubmission::create_task_submission(
-                $task->ID,
-                $this->ID,
-                $this->User->ID
-            );
-        }
-    }
-
-    /**
      * Return the appropriate approval DB field(s), based on the passed user's groups
      * or status as a "Business Owner".
      *
@@ -2657,5 +2689,30 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         }
 
         return false;
+    }
+
+    /**
+     * @param string  $string          string
+     * @return string
+     */
+    public function replaceVariable(string $string)
+    {
+        $questionnaireName = $this->Questionnaire()->Name;
+        $SubmitterName = $this->SubmitterName;
+        $SubmitterEmail = $this->SubmitterEmail;
+        $productName = $this->ProductName;
+        $summaryLinkString = $this->getSummaryPageLink();
+        $summaryLink = '<a href="' . $summaryLinkString . '">this link</a>';
+        $startLinkString = $this->getStartLink();
+        $startLink = '<a href="' . $startLinkString . '">this link</a>';
+
+        $string = str_replace('{$questionnaireName}', $questionnaireName, $string);
+        $string = str_replace('{$summaryLink}', $summaryLink, $string);
+        $string = str_replace('{$startLink}', $startLink, $string);
+        $string = str_replace('{$submitterName}', $SubmitterName, $string);
+        $string = str_replace('{$submitterEmail}', $SubmitterEmail, $string);
+        $string = str_replace('{$productName}', $productName, $string);
+
+        return $string;
     }
 }

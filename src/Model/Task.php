@@ -54,7 +54,6 @@ use SilverStripe\Security\PermissionProvider;
  * Class Task
  *
  * @property string Name
- * @property boolean DisplayOnHomePage
  * @property string KeyInformation
  * @property string TaskType
  * @property boolean LockAnswersWhenComplete
@@ -81,7 +80,6 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
      */
     private static $db = [
         'Name' => 'Varchar(255)',
-        'DisplayOnHomePage'=> 'Boolean',
         'KeyInformation' => 'HTMLText',
         'TaskType' => 'Enum(array("questionnaire", "selection", "risk questionnaire", "security risk assessment", "control validation audit"))',
         'LockAnswersWhenComplete' => 'Boolean',
@@ -139,7 +137,6 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
     private static $summary_fields = [
         'Name',
         'TaskType',
-        'DisplayOnHomePage.Nice' => 'Display On Home Page',
         'LockAnswersWhenComplete.Nice' => 'Lock Answers When Complete',
         'IsApprovalRequired.Nice' => 'Is Approval Required'
     ];
@@ -562,16 +559,6 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
     }
 
     /**
-     * Is this task classified as a "Standalone" task?
-     *
-     * @return boolean
-     */
-    public function isStandalone() : bool
-    {
-        return (bool) $this->DisplayOnHomePage;
-    }
-
-    /**
      * Is this task classified as a "Component Selection" task?
      *
      * @return boolean
@@ -637,21 +624,6 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
 
         if ($doAudit) {
             $msg = sprintf('"%s" was created', $this->Name);
-            $this->auditService->commit('Create', $msg, $this, $userData);
-        }
-
-        // Auditing: CREATE, when:
-        // - ANY user is present AND
-        // - Record is new AND
-        // - Task is "Standalone" (DisplayOnHomePage field has been set)
-        $doAudit = (
-            !$this->exists() &&
-            $user &&
-            $this->isStandalone()
-        );
-
-        if ($doAudit) {
-            $msg = sprintf('"%s" (Standalone Task) was created', $this->Name);
             $this->auditService->commit('Create', $msg, $this, $userData);
         }
 
@@ -793,7 +765,6 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
             'SubmissionEmails',
             'IsApprovalRequired',
             'ApprovalGroupID',
-            'DisplayOnHomePage',
             'KeyInformation',
             'LockAnswersWhenComplete',
             'TaskApproval',
@@ -812,10 +783,10 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
                     . ' security components will be selected for the security'
                     . ' risk assessment task. They will appear as selected'
                     . ' components in the task submission.'
-                    . '<br/><br/><strong>Note: </strong>'
+                    . '<br/><p><strong>Note: </strong>'
                     . 'The selected components of the component selection task'
                     . ' will always override the default components specified'
-                    . ' here.'
+                    . ' here.</p>'
                 )
             );
         }

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file contains the "SendApprovedNotificationEmailJob" class.
+ * This file contains the "SendQuestionnaireSubmittedEmailJob" class.
  *
  * @category SilverStripe_Project
  * @package SDLT
@@ -17,20 +17,25 @@ use SilverStripe\Control\Email\Email;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Symbiote\QueuedJobs\Services\QueuedJob;
-use SilverStripe\Security\Member;
 use NZTA\SDLT\Model\QuestionnaireEmail;
+use NZTA\SDLT\Model\QuestionnaireSubmission;
+use SilverStripe\ORM\ManyManyList;
+use SilverStripe\Security\Member;
 
 /**
  * A QueuedJob is specifically designed to be invoked from an onAfterWrite() process
  */
-class SendApprovedNotificationEmailJob extends AbstractQueuedJob implements QueuedJob
+class SendQuestionnaireSubmittedEmailJob extends AbstractQueuedJob implements QueuedJob
 {
     /**
      * @param QuestionnaireSubmission $questionnaireSubmission $questionnaireSubmission
+     * @param  ManyManyList            $members                 A list of {@link Member} records.
+     * @return void
      */
-    public function __construct($questionnaireSubmission = null)
+    public function __construct($questionnaireSubmission = null, $members = null)
     {
         $this->questionnaireSubmission = $questionnaireSubmission;
+        $this->members = $members;
     }
 
     /**
@@ -39,7 +44,7 @@ class SendApprovedNotificationEmailJob extends AbstractQueuedJob implements Queu
     public function getTitle()
     {
         return sprintf(
-            'Initialising approved notification email - %s (%d)',
+            'Initialising questionnaire submitted email job for %s (%d)',
             $this->questionnaireSubmission->Questionnaire()->Name,
             $this->questionnaireSubmission->ID
         );
@@ -59,27 +64,47 @@ class SendApprovedNotificationEmailJob extends AbstractQueuedJob implements Queu
      */
     public function process()
     {
+        if ($this->members) {
+            foreach ($this->members as $member) {
+                $this->sendEmail(
+                    $member->FirstName,
+                    $member->Email
+                );
+            }
+        }
+        $this->isComplete = true;
+    }
+
+    /**
+     * Handles the meat of the CSV import process.
+     *
+     * @return mixed void | null
+     */
+    public function sendEmail($name = '', $toEmail = '')
+    {
         $emailDetails = QuestionnaireEmail::get()->first();
+
         $sub = $this->questionnaireSubmission->replaceVariable(
-            $emailDetails->ApprovedNotificationEmailSubject
+            $emailDetails->QuestionnaireSubmittedEmailSubject
         );
+
+        $body = $this->questionnaireSubmission->replaceVariable(
+            $emailDetails->QuestionnaireSubmittedEmailBody
+        );
+
         $from = $emailDetails->FromEmailAddress;
 
         $email = Email::create()
             ->setHTMLTemplate('Email\\EmailTemplate')
             ->setData([
-                'Name' => $this->questionnaireSubmission->SubmitterName,
-                'Body' => $this->questionnaireSubmission->replaceVariable(
-                    $emailDetails->ApprovedNotificationEmailBody
-                ),
+                'Name' => $name,
+                'Body' => $body,
                 'EmailSignature' => $emailDetails->EmailSignature
             ])
             ->setFrom($from)
-            ->setTo($this->questionnaireSubmission->SubmitterEmail)
+            ->setTo($toEmail)
             ->setSubject($sub);
 
         $email->send();
-
-        $this->isComplete = true;
     }
 }
