@@ -710,6 +710,11 @@ class SetupSDLTDataTask extends BuildTask
         $cws->RiskID = $risk ? $risk->ID : 0;
         $cws->SecurityControlID = $sCtrl ? $sCtrl->ID : 0;
         $cws->SecurityComponentID = $sComp ? $sComp->ID : 0;
+        // If the ControlWeightSet does not belong to any existing SecurityComponent or SecurityControl,
+        // or does not have a valid RiskID, then don't add it to database.
+        if ($cws->SecurityComponentID == 0 || $cws->SecurityControlID == 0 || $cws->RiskID == 0) {
+            $cws->delete();
+        }
         $cws->write();
         return $cws;
     }
