@@ -35,6 +35,8 @@ use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\ListboxField;
 use SilverStripe\Security\PermissionProvider;
 use SilverStripe\Security\Member;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\SnapshotAdmin\SnapshotHistoryExtension;
 
 /**
  * Class Questionnaire
@@ -98,6 +100,14 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
     /**
      * @var array
      */
+    private static $extensions = [
+        Versioned::class . '.versioned',
+        SnapshotHistoryExtension::class
+    ];
+
+    /**
+     * @var array
+     */
     private static $defaults = [
         'ExpireAfterDays' => 14,
         'DoesSubmissionExpire' => 'Yes',
@@ -124,6 +134,14 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
     private static $many_many = [
         'Tasks' => Task::class,
         'SubmissionEmailApprovalGroup' => Group::class
+    ];
+
+    /**
+     * @var array
+     */
+    private static $snapshot_relation_tracking = [
+        'Questions',
+        'Tasks'
     ];
 
     /**
@@ -434,7 +452,7 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
             /* @var $question Question */
             $questionData['ID'] = $question->ID;
             $questionData['Title'] = $question->Title;
-            $questionData['Question'] = $question->Question;
+            $questionData['QuestionHeading'] = $question->QuestionHeading;
             $questionData['Description'] = $question->Description;
             $questionData['AnswerFieldType'] = $question->AnswerFieldType;
             $questionData['AnswerInputFields'] = $question->getAnswerInputFieldsData();
@@ -475,53 +493,7 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
             $this->ExpireAfterDays = $this->config()->expiry_days;
         }
 
-        $this->audit();
-    }
-
-    /**
-     * Encapsulates all model-specific auditing processes.
-     *
-     * @return void
-     */
-    protected function audit() : void
-    {
-        $user = Security::getCurrentUser();
-        $userData = '';
-
-        if ($user) {
-            $groups = $user->Groups()->column('Title');
-            $userData = implode('. ', [
-                'Email: ' . $user->Email,
-                'Group(s): ' . ($groups ? implode(' : ', $groups) : 'N/A'),
-            ]);
-        }
-
-        // Auditing: CREATE, when:
-        // - User is present AND
-        // - Record is new
-        $doAudit = !$this->exists() && $user;
-
-        if ($doAudit) {
-            $msg = sprintf('"%s" was created', $this->Name);
-            $groups = $user->Groups()->column('Title');
-            $this->auditService->commit('Create', $msg, $this, $userData);
-        }
-
-        // Auditing: CHANGE, when:
-        // - User is present AND
-        // - User is an Administrator
-        // - Record exists
-        $doAudit = (
-            $this->exists() &&
-            $user &&
-            $user->getIsAdmin()
-        );
-
-        if ($doAudit) {
-            $msg = sprintf('"%s" was modified', $this->Name);
-            $groups = $user->Groups()->column('Title');
-            $this->auditService->commit('Change', $msg, $this, $userData);
-        }
+        $this->auditService->audit($this);
     }
 
     /**

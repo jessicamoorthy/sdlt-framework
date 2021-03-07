@@ -18,6 +18,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\ValidationException;
 use NZTA\SDLT\Model\AuditEvent;
 use NZTA\SDLT\Helper\ClassSpec;
+use SilverStripe\Security\Security;
 
 /**
  * This service is injected into any required data-models such as {@link Questionnaire}
@@ -79,13 +80,13 @@ class AuditService
      * @param  string     $userData  Arbitrary data about the user that fired the event.
      * @return void
      */
-    public function commit(string $event, string $extra, DataObject $model, $userData = '') : void
+    public function commit(string $event, string $extra, DataObject $model, $userData = '', $historyLink = '') : void
     {
         $this->validateEvent($event);
         $event = self::normalise_event($event, $model);
 
         AuditEvent::create()
-                ->log($event, $extra, $model, $userData)
+                ->log($event, $extra, $model, $userData, $historyLink)
                 ->write();
     }
 
@@ -119,5 +120,69 @@ class AuditService
             ClassSpec::short_name(get_class($model)),
             $event
         ));
+    }
+
+    /**
+     * Encapsulates all model-specific auditing processes.
+     *
+     * @return void
+     */
+    public function audit(DataObject $dataObject) : void
+    {
+        $user = Security::getCurrentUser();
+        $userData = '';
+        $name = '';
+        if ($dataObject->Name) {
+            $name = $dataObject->Name;
+        } elseif ($dataObject->Label) {
+            $name = $dataObject->Label;
+        } elseif ($dataObject->Title) {
+            $name = $dataObject->Title;
+        }
+
+        if ($user) {
+            $groups = $user->Groups()->column('Title');
+            $userData = implode('. ', [
+                'Email: ' . $user->Email,
+                'Group(s): ' . ($groups ? implode(' : ', $groups) : 'N/A'),
+            ]);
+        }
+
+        // Auditing: CREATE, when:
+        // - User is present AND
+        // - Record is new
+        $doAudit = !$dataObject->exists() && $user;
+
+        if ($doAudit) {
+            $msg = sprintf('"%s" was created', $name);
+            $groups = $user->Groups()->column('Title');
+            $dataObject->auditService->commit('Create', $msg, $dataObject, $userData);
+        }
+
+        // Auditing: CHANGE, when:
+        // - User is present AND
+        // - User is an Administrator
+        // - Record exists
+        $doAudit = (
+            $dataObject->exists() &&
+            $user &&
+            $user->getIsAdmin()
+        );
+
+        if ($doAudit) {
+            if ($dataObject->isChanged('SortOrder')) {
+                $msg = sprintf('"%s" was reordered', $name);
+                $groups = $user->Groups()->column('Title');
+                $this->commit('Change', $msg, $dataObject, $userData, $dataObject->getLink());
+            } elseif (!$dataObject->getLink()) {
+                $msg = sprintf('"%s" was deleted', $name);
+                $groups = $user->Groups()->column('Title');
+                $this->commit('Change', $msg, $dataObject, $userData);
+            } else {
+                $msg = sprintf('"%s" was modified', $name);
+                $groups = $user->Groups()->column('Title');
+                $this->commit('Change', $msg, $dataObject, $userData, $dataObject->getLink());
+            }
+        }
     }
 }

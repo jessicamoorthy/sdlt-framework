@@ -1,4 +1,4 @@
-"ID","ClassName","LastEdited","Created","Title","Question","Description","AnswerFieldType","QuestionnaireID","SortOrder","TaskID"
+"ID","ClassName","LastEdited","Created","Title","QuestionHeading","Description","AnswerFieldType","QuestionnaireID","SortOrder","TaskID"
 1,"NZTA\SDLT\Model\Question","2020-02-11 07:37:16","2019-03-06 10:49:10","Product Details","Please enter details of the product","Please enter the name, homepage and a contact email address for the product. If you do not have a contact within the product company, please put your own email address as point of contact.","input",1,1,0
 2,"NZTA\SDLT\Model\Question","2019-04-23 15:03:46","2019-03-06 10:51:02"," Existing POC/Trial","Is this an existing Proof of Concept or Trial?","Has this product already gone through a proof of concept or trial?
 OR:

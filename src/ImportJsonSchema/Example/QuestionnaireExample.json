@@ -10,7 +10,7 @@
     "questions": [
       {
         "title": "Test input",
-        "question": "test question 1",
+        "questionHeading": "test question 1",
         "description": "<p>test description</p><ol><li>Item 1</li><li>Item 2</li></ol>",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -36,7 +36,7 @@
       },
       {
         "title": "Test Action",
-        "question": "test question 2 for action",
+        "questionHeading": "test question 2 for action",
         "description": "test description 2",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -62,7 +62,7 @@
       },
       {
         "title": "q3 test",
-        "question": "test question 2 for action",
+        "questionHeading": "test question 2 for action",
         "description": "test description 2",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -75,7 +75,7 @@
       },
       {
         "title": "q4 test goto",
-        "question": "test question 2 for action",
+        "questionHeading": "test question 2 for action",
         "description": "test description 2",
         "answerFieldType": "action",
         "answerActionFields": [

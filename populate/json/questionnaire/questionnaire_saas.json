@@ -10,7 +10,7 @@
     "questions": [
       {
         "title": "Existing Product",
-        "question": "Is this product currently, or previously in use at the Transport Agency?",
+        "questionHeading": "Is this product currently, or previously in use at the Transport Agency?",
         "description": "<p>Has this product already been cleared for use at the Transport Agency by the internal product team?<\/p><p>Please check the <a rel=\"noopener\" href=\"https:\/\/infohub.example.co.nz\/otcs\/cs.dll?func=ll&amp;objaction=overview&amp;objid=43085466\" target=\"_blank\">Transport Agency Product List<\/a> spreadsheet to see if the product is listed. If the product can be found in the spreadsheet, please answer \"yes\".<\/p><p>If you're unsure, please contact <a href=\"mailto:lauren.flohr@example.co.nz\">Lauren Flohr<\/a>, <span class=\"_21sno _3v9gP _27y7i\" title=\"Head of Product\" data-log-name=\"JobTitle\">Head of Product.<\/span><\/p>",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -27,7 +27,7 @@
       },
       {
         "title": "Funded By Transport Agency",
-        "question": "Has the Transport Agency paid for the development of this product?",
+        "questionHeading": "Has the Transport Agency paid for the development of this product?",
         "description": "<p>Has this product been developed by the Transport Agency?<\/p><p>OR:<\/p><p>Has it been developed by a partner\/vendor at the expense of the Transport Agency?<\/p>",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -44,7 +44,7 @@
       },
       {
         "title": "Product Information",
-        "question": "Please enter details of the product",
+        "questionHeading": "Please enter details of the product",
         "description": "Please enter the name, homepage and a contact email address for the product. If you do not have a contact within the product company, please put your own email address as point of contact.",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -82,7 +82,7 @@
       },
       {
         "title": "Business Owner",
-        "question": "Please enter details of the business owner for the use of this SaaS product",
+        "questionHeading": "Please enter details of the business owner for the use of this SaaS product",
         "description": "<p>The business owner is the person who can formally accept risks on behalf of the Agency to the data used in this product. This is a business line manager, not security. This person will know they're the business owner, as their role explicitly states that they can accept risk. This is not a developer, engineer or technical lead position.<\/p>",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -120,7 +120,7 @@
       },
       {
         "title": "Product Description",
-        "question": "Please describe what the product does in plain English",
+        "questionHeading": "Please describe what the product does in plain English",
         "description": "<p>Include description of the product's features, the ones the Transport Agency wants to use and how we intend to use them.<\/p>",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -138,7 +138,7 @@
       },
       {
         "title": "Product Purpose",
-        "question": "Please describe why the Transport Agency needs this product",
+        "questionHeading": "Please describe why the Transport Agency needs this product",
         "description": "Include description of why this is important, why the Transport Agency needs this and what would happen if we don't fill this gap",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -156,7 +156,7 @@
       },
       {
         "title": "Release Date",
-        "question": "What is your expected go-live date for this product?",
+        "questionHeading": "What is your expected go-live date for this product?",
         "description": "",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -174,7 +174,7 @@
       },
       {
         "title": "Personal Information",
-        "question": "Will this SaaS product store customer personal information (PI)?",
+        "questionHeading": "Will this SaaS product store customer personal information (PI)?",
         "description": "<p>Personal Information is defined as any information about an identifiable individual (i.e. a living, natural person; not companies\/charities\/trusts etc). The information doesn\u2019t need to identify a person by their name to be personal information, and it also doesn\u2019t need to be private or sensitive. As long as there\u2019s a reasonable chance that someone could be identified from the information - even if it\u2019s only one person that makes the link between the information and the individual, and even if it\u2019s only by linking it with other information - then it\u2019s personal information. This includes information about other staff members and our customers.<\/p><p>All SaaS products used by the Agency that contain or use any form of Personal Information must go through a Privacy Threshold Assessment process. At the end of this questionnaire, a Privacy Threshold Assessment task will be completed. When completed, this task will be submitted to the Privacy Officers for review and approval.<\/p><p>For more information, and specific examples, please see the Privacy Page on OnRamp: https:\/\/onramp.example.co.nz\/what-we-do\/legal-services\/privacy\/<\/p><p><strong>Note: <\/strong>If the product will only store the names and email addresses of Transport Agency staff as users of this system, please click the \"Agency Staff Login Only\" button.<\/p>",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -205,7 +205,7 @@
       },
       {
         "title": "Types of Data",
-        "question": "Please list the types of data being used in this product",
+        "questionHeading": "Please list the types of data being used in this product",
         "description": "<p>Please list out the different types of data you'll be inputting or using into this software. (e.g. flow charts, names, emails, phone numbers)<\/p>",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -223,7 +223,7 @@
       },
       {
         "title": "Agency Integration",
-        "question": "Will this SaaS product be integrating with any Transport Agency systems?",
+        "questionHeading": "Will this SaaS product be integrating with any Transport Agency systems?",
         "description": "<p>Will this product r<strong>eceive information from<\/strong> or <strong>transfer data to<\/strong> any other Transport Agency systems?<\/p>",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -251,7 +251,7 @@
       },
       {
         "title": "Data Transfer",
-        "question": "How is Transport Agency data being transferred to\/from the SaaS Product?",
+        "questionHeading": "How is Transport Agency data being transferred to\/from the SaaS Product?",
         "description": "<p>Please document the technologies being used to transfer data (e.g. Web Forms, FTP, SCP, Email etc)<\/p>",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -269,7 +269,7 @@
       },
       {
         "title": "Description of Information",
-        "question": "Describe what Transport Agency information will be received, transmitted and stored by this product",
+        "questionHeading": "Describe what Transport Agency information will be received, transmitted and stored by this product",
         "description": "Please ensure as much information as possible about Transport Agency information that is utilised by this product. Any information that is stored by, transmitted to; or received from this product must be documented.",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -287,7 +287,7 @@
       },
       {
         "title": "Credit Card Payments",
-        "question": "Will this product accept Transport Agency customer credit cards?",
+        "questionHeading": "Will this product accept Transport Agency customer credit cards?",
         "description": "Will this product accept credit card payments from the NZ Public on behalf of the Transport Agency?",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -308,7 +308,7 @@
       },
       {
         "title": "Credit Card Connection",
-        "question": "Will this product directly talk to the Transport Agency Payment Micro-site or Common Payment Services (CPS) system?",
+        "questionHeading": "Will this product directly talk to the Transport Agency Payment Micro-site or Common Payment Services (CPS) system?",
         "description": "To use this product, will there need to be some integration with Transport Agency systems that handle payments? This includes the Payment Micro-site and Common Payment Services (CPS). ",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -329,7 +329,7 @@
       },
       {
         "title": "Firewall Changes",
-        "question": "Will you require firewall changes to be made to use this product?",
+        "questionHeading": "Will you require firewall changes to be made to use this product?",
         "description": "If this product requires connections to\/from Transport Agency systems that are not Web (e.g. Chrome\/Edge\/Firefox) the answer is probably Yes",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -345,7 +345,7 @@
       },
       {
         "title": "SaaS Users",
-        "question": "Please list the names and roles of Transport Agency staff who will use this product",
+        "questionHeading": "Please list the names and roles of Transport Agency staff who will use this product",
         "description": "Users are the people who will be using the product. Please document the names, roles and permissions each user will get. If there are named groups within the product, please document the group that each user will belong to.",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -363,7 +363,7 @@
       },
       {
         "title": "Authentication",
-        "question": "Does this product integrate with the Transport Agency identity and access management platforms?",
+        "questionHeading": "Does this product integrate with the Transport Agency identity and access management platforms?",
         "description": "<p>Will this product integrate with Azure Active Directory or OKTA to manage Transport Agency user accounts?<\/p>",
         "answerFieldType": "action",
         "answerActionFields": [
@@ -383,7 +383,7 @@
       },
       {
         "title": "Other",
-        "question": "Is there any other information you'd like to submit with your application?",
+        "questionHeading": "Is there any other information you'd like to submit with your application?",
         "description": "Please include information that might be relevant to the Security Architects, Chief Information Security Officer or Business Owner.",
         "answerFieldType": "input",
         "answerInputFields": [
@@ -401,7 +401,7 @@
       },
       {
         "title": "Next Steps",
-        "question": "Next Steps",
+        "questionHeading": "Next Steps",
         "description": "<p>Next, you will need to review your answers to click \"Submit Questionnaire\".<\/p><p>If any tasks are required, these will be created and displayed for you to complete.<\/p><p>If no tasks are required, you will be able to click \"Submit for Approval\" to send your submission for approval.<\/p>",
         "answerFieldType": "action",
         "answerActionFields": [

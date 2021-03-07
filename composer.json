@@ -23,7 +23,8 @@
         "sensiolabs/security-checker": "^5.0.1",
         "squizlabs/php_codesniffer": "^3.3.2",
         "silverstripe/graphql-devtools": "^1.0@dev",
-        "dnadesign/silverstripe-populate": "^2.0"
+        "dnadesign/silverstripe-populate": "^2.0",
+        "silverstripe/versioned-snapshot-admin": "dev-master#ad702dce09cc5105869a779edffcb47dc02592de"
     },
     "extra": {
         "expose": [
