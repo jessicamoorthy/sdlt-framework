@@ -6,29 +6,40 @@ Name: nzta-sdlt-services
 NZTA\SDLT\Model\Questionnaire:
   dependencies:
     auditService: '%$NZTA\SDLT\Service\AuditService'
-    
+
 NZTA\SDLT\Model\QuestionnaireSubmission:
   dependencies:
     auditService: '%$NZTA\SDLT\Service\AuditService'
-  
+
 NZTA\SDLT\Model\Task:
   dependencies:
     auditService: '%$NZTA\SDLT\Service\AuditService'
-  
+
+NZTA\SDLT\Model\Question:
+  dependencies:
+    auditService: '%$NZTA\SDLT\Service\AuditService'
+
+NZTA\SDLT\Model\AnswerActionField:
+  dependencies:
+    auditService: '%$NZTA\SDLT\Service\AuditService'
+
+NZTA\SDLT\Model\AnswerInputField:
+  dependencies:
+    auditService: '%$NZTA\SDLT\Service\AuditService'
+
 SilverStripe\Core\Injector\Injector:
   IssueTrackerService:
     factory: NZTA\SDLT\IssueTracker\Factory\IssueTrackerFactory
-    
+
 NZTA\SDLT\Model\TaskSubmission:
   dependencies:
     auditService: '%$NZTA\SDLT\Service\AuditService'
     issueTrackerService: '%$IssueTrackerService'
-    
+
 NZTA\SDLT\Model\SecurityComponent:
   dependencies:
     issueTrackerService: %$IssueTrackerService
-    
+
 NZTA\SDLT\Model\JiraTicket:
   dependencies:
     issueTrackerService: %$IssueTrackerService
-

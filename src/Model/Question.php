@@ -26,6 +26,8 @@ use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use NZTA\SDLT\Traits\SDLTModelPermissions;
 use SilverStripe\ORM\DB;
 use SilverStripe\Security\Security;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\SnapshotAdmin\SnapshotHistoryExtension;
 
 /**
  * Class Question
@@ -53,10 +55,18 @@ class Question extends DataObject implements ScaffoldingProvider
      */
     private static $db = [
         'Title' => 'Varchar(255)',
-        'Question' => 'Text',
+        'QuestionHeading' => 'Text',
         'Description' => 'HTMLText',
         'AnswerFieldType' => 'Enum(array("input", "action"))',
         'SortOrder' => 'Int',
+    ];
+
+    /**
+     * @var array
+     */
+    private static $extensions = [
+        Versioned::class . '.versioned',
+        SnapshotHistoryExtension::class
     ];
 
     /**
@@ -80,9 +90,17 @@ class Question extends DataObject implements ScaffoldingProvider
     /**
      * @var array
      */
+    private static $snapshot_relation_tracking = [
+        'AnswerInputFields',
+        'AnswerActionFields'
+    ];
+
+    /**
+     * @var array
+     */
     private static $summary_fields = [
         'Title',
-        'Question',
+        'QuestionHeading',
         'AnswerFieldType',
         'ShowActionResult' => 'Results',
     ];
@@ -93,7 +111,7 @@ class Question extends DataObject implements ScaffoldingProvider
     private static $field_labels = [
         'Title' => 'Question Title',
         'Description' => 'Question Description',
-        'Question' => 'Question Heading'
+        'QuestionHeading' => 'Question Heading'
     ];
 
     /**
@@ -161,6 +179,8 @@ class Question extends DataObject implements ScaffoldingProvider
             $maxSortOrder = DB::query("SELECT MAX(\"SortOrder\") FROM \"Question\"")->value();
             $this->SortOrder = $maxSortOrder + 1;
         }
+
+        $this->auditService->audit($this);
     }
 
     /**
@@ -175,7 +195,7 @@ class Question extends DataObject implements ScaffoldingProvider
             ->addFields([
                 'ID',
                 'Title',
-                'Question',
+                'QuestionHeading',
                 'Description',
                 'AnswerFieldType'
             ]);
@@ -401,7 +421,7 @@ class Question extends DataObject implements ScaffoldingProvider
         $obj = self::create();
 
         $obj->Title = $questionJsonObj->title;
-        $obj->Question = $questionJsonObj->question ?? '';
+        $obj->QuestionHeading = $questionJsonObj->questionHeading ?? '';
         $obj->Description = $questionJsonObj->description ?? '';
         $obj->AnswerFieldType = $questionJsonObj->answerFieldType ??  'input';
 
@@ -436,7 +456,7 @@ class Question extends DataObject implements ScaffoldingProvider
     public static function export_record($question)
     {
         $obj['title'] = $question->Title;
-        $obj['question'] =  $question->Question ?? '';
+        $obj['questionHeading'] =  $question->QuestionHeading ?? '';
         $obj['description'] = $question->Description ?? '';
         $obj['answerFieldType'] = $question->AnswerFieldType;
 

@@ -17,6 +17,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBVarchar;
 use SilverStripe\ORM\FieldType\DBText;
 use SilverStripe\Forms\ReadonlyField;
+use SilverStripe\Forms\HTMLReadonlyField;
 use SilverStripe\Security\Security;
 use NZTA\SDLT\Helper\ClassSpec;
 
@@ -35,6 +36,7 @@ class AuditEvent extends DataObject
         'Model' => DBVarchar::class,
         'Extra' => DBText::Class,
         'UserData'  => DBVarchar::class,
+        'HistoryLink' => DBVarchar::class,
     ];
 
     /**
@@ -60,6 +62,19 @@ class AuditEvent extends DataObject
     {
         $fields = parent::getCMSFields();
         $fields->addFieldsToTab('Root.Main', ReadonlyField::create('Created', 'Logged Date'));
+        $fields->removeByName(['HistoryLink']);
+        if ($this->HistoryLink != 'N/A') {
+            $fields->addFieldsToTab(
+                'Root.Main',
+                [
+                    HTMLReadonlyField::create(
+                        $this->historyDescription(),
+                        'History Link',
+                        $this->historyDescription()
+                    )
+                ]
+            );
+        }
 
         return $fields;
     }
@@ -73,12 +88,13 @@ class AuditEvent extends DataObject
      * @param  string     $userData  Info about the user that fired the event.
      * @return AuditEvent
      */
-    public function log(string $event, string $extra, DataObject $model, $userData = '') : AuditEvent
+    public function log(string $event, string $extra, DataObject $model, $userData = '', $historyLink = '') : AuditEvent
     {
         $this->setField('Event', $event);
         $this->setField('Extra', $extra);
         $this->setField('Model', ClassSpec::short_name(get_class($model)));
         $this->setField('UserData', $userData ?: 'N/A');
+        $this->setField('HistoryLink', $historyLink ?: 'N/A');
 
         return $this;
     }
@@ -90,6 +106,17 @@ class AuditEvent extends DataObject
     public function canEdit($member = null)
     {
         return false;
+    }
+
+    /**
+     * @return string
+     */
+    public function historyDescription()
+    {
+        return sprintf('<p>Please click on the <a href="%s"> Link </a>'
+                        . 'to check the record</p>',
+                        $this->HistoryLink
+        );
     }
 
     /**

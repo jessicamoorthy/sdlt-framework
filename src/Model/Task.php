@@ -49,6 +49,8 @@ use SilverStripe\Security\Security;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\PermissionProvider;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\SnapshotAdmin\SnapshotHistoryExtension;
 
 /**
  * Class Task
@@ -92,6 +94,14 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
     /**
      * @var array
      */
+    private static $extensions = [
+        Versioned::class . '.versioned',
+        SnapshotHistoryExtension::class,
+    ];
+
+    /**
+     * @var array
+     */
     private static $has_one = [
         'ApprovalGroup' => Group::class,
         //this is a task of type "risk questionnaire" to grab question data from
@@ -107,6 +117,13 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
         'SubmissionEmails' => TaskSubmissionEmail::class,
         'LikelihoodThresholds' => LikelihoodThreshold::class, // when task type is SRA
         'RiskRatings' => RiskRating::class, // when task type is SRA
+    ];
+
+    /**
+     * @var array
+     */
+    private static $snapshot_relation_tracking = [
+        'Questions'
     ];
 
     /**
@@ -325,6 +342,11 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
             $this->getCVA_CMSFields($fields);
         }
 
+        if ($historyTab = $fields->fieldByName('Root.History')) {
+            $fields->removeFieldFromTab('Root', 'History');
+            $fields->fieldByName('Root')->push($historyTab);
+        }
+
         return $fields;
     }
 
@@ -384,7 +406,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
             /* @var $question Question */
             $questionData['ID'] = $question->ID;
             $questionData['Title'] = $question->Title;
-            $questionData['Question'] = $question->Question;
+            $questionData['QuestionHeading'] = $question->QuestionHeading;
             $questionData['Description'] = $question->Description;
             $questionData['AnswerFieldType'] = $question->AnswerFieldType;
             $questionData['AnswerInputFields'] = $question->getAnswerInputFieldsData();
@@ -587,61 +609,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
     {
         parent::onBeforeWrite();
 
-        $this->audit();
-    }
-
-    /**
-     * Encapsulates all model-specific auditing processes.
-     *
-     * @return void
-     */
-    protected function audit() : void
-    {
-        $user = Security::getCurrentUser();
-
-        // Auditing: CREATE, when:
-        // - A user is present AND
-        // - User is in group that can access admin AND
-        // - Record is new
-        $doAudit = (
-            !$this->exists() &&
-            $user && (
-                $user->getIsSA() ||
-                $user->getIsCISO() ||
-                $user->getIsAdmin()
-            )
-        );
-
-        $userData = '';
-
-        if ($user) {
-            $groups = $user->Groups()->column('Title');
-            $userData = implode('. ', [
-                'Email: ' . $user->Email,
-                'Group(s): ' . ($groups ? implode(' : ', $groups) : 'N/A'),
-            ]);
-        }
-
-        if ($doAudit) {
-            $msg = sprintf('"%s" was created', $this->Name);
-            $this->auditService->commit('Create', $msg, $this, $userData);
-        }
-
-        // Auditing: CHANGE, when:
-        // - User is present AND
-        // - User is an Administrator
-        // - Record exists
-        $doAudit = (
-            $this->exists() &&
-            $user &&
-            $user->getIsAdmin()
-        );
-
-        if ($doAudit) {
-            $msg = sprintf('"%s" was modified', $this->Name);
-            $groups = $user->Groups()->column('Title');
-            $this->auditService->commit('Change', $msg, $this, $userData);
-        }
+        $this->auditService->audit($this);
     }
 
     /**
@@ -736,7 +704,6 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
         return $admin->Link('NZTA-SDLT-Model-Task/EditForm/field/NZTA-SDLT-Model-Task/item/'
             . $this->ID . '/' . $action);
     }
-
 
     /**
      * check target is remote (JIRA Cloud)

@@ -27,6 +27,8 @@ use UncleCheese\DisplayLogic\Forms\Wrapper;
 use NZTA\SDLT\Traits\SDLTModelPermissions;
 use NZTA\SDLT\Model\MultiChoiceAnswerSelection;
 use SilverStripe\Core\Convert;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\SnapshotAdmin\SnapshotHistoryExtension;
 
 /**
  * Class AnswerInputField
@@ -64,6 +66,14 @@ class AnswerInputField extends DataObject implements ScaffoldingProvider
         'IsProductName' => 'Boolean',
         'MultiChoiceSingleAnswerDefault' => 'Varchar(255)',
         'MultiChoiceMultipleAnswerDefault' => 'Varchar(255)',
+    ];
+
+    /**
+     * @var string
+     */
+    private static $extensions = [
+        Versioned::class . '.versioned',
+        SnapshotHistoryExtension::class
     ];
 
     /**
@@ -291,6 +301,33 @@ class AnswerInputField extends DataObject implements ScaffoldingProvider
         }
 
         return $this->InputType === 'multiple-choice: single selection';
+    }
+
+    /**
+     * get current object link in model admin
+     * @return string
+     */
+    public function getLink()
+    {
+        $questionLink = $this->Question->getLink("");
+        if ($questionLink) {
+            $link = $questionLink . "/ItemEditForm/field/AnswerActionFields/item/" . $this->ID;
+            return $link;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Deal with pre-write processes.
+     *
+     * @return void
+     */
+    public function onBeforeWrite()
+    {
+        parent::onBeforeWrite();
+
+        $this->auditService->audit($this);
     }
 
     /**

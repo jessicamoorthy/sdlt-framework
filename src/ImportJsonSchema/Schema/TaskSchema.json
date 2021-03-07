@@ -44,7 +44,7 @@
               "title": {
                 "type": "string"
               },
-              "question": {
+              "questionHeading": {
                 "type": "string"
               },
               "description": {
@@ -225,7 +225,7 @@
             },
             "required": [
               "title",
-              "question",
+              "questionHeading",
               "answerFieldType"
             ]
           }
