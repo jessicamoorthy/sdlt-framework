@@ -33,6 +33,7 @@ use SilverStripe\Control\Director;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use NZTA\SDLT\Job\SendTaskSubmissionEmailJob;
 use NZTA\SDLT\Job\SendTaskApprovalLinkEmailJob;
+use NZTA\SDLT\Job\SendTaskStakeholdersEmailJob;
 use SilverStripe\Forms\TextField;
 use NZTA\SDLT\Model\JiraTicket;
 use SilverStripe\Security\Group;
@@ -117,6 +118,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         'JiraKey' => 'Varchar(255)',
         'IsApprovalRequired' => 'Boolean',
         'IsTaskApprovalLinkSent' => 'Boolean',
+        'IsStakeholdersEmailSent' => 'Boolean',
         'RiskResultData' => 'Text',
         'CVATaskData' => 'Text',
     ];
@@ -425,7 +427,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $taskApproverList
                 )->setEmptyString(' '),
                 $fields->dataFieldByName('ApprovalGroupID'),
-                $fields->dataFieldByName('IsTaskApprovalLinkSent '),
+                $fields->dataFieldByName('IsTaskApprovalLinkSent'),
+                $fields->dataFieldByName('IsStakeholdersEmailSent')
             ]
         );
 
@@ -895,6 +898,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
 
                     $submission->Status = TaskSubmission::STATUS_COMPLETE;
                     $submission->completedByID = $member->ID;
+                    $submission->sendEmailToStakeholder();
 
                     // if task approval requires then set status to waiting for approval
                     if ($submission->IsTaskApprovalRequired) {
@@ -952,7 +956,11 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->Status = TaskSubmission::STATUS_COMPLETE;
+<<<<<<< HEAD
                     $submission->completedByID = $member->ID;
+=======
+                    $submission->sendEmailToStakeholder();
+>>>>>>> NEW: RM#81890 Add stakeholders group to Tasks and move email formats to site config page
                     $submission->RiskResultData = $submission->getRiskResultBasedOnAnswer();
 
                     // if task approval requires then set status to waiting for approval
@@ -995,7 +1003,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
 
     /**
      * set task submission status to waitig for approval
-     * and send emai lto the approver
+     * and send emai lto the approver and stakeholder
      * @return void
      */
     public function setStatusToWatingforApproval() : void
@@ -1016,6 +1024,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                 );
             }
         }
+
+        $this->SendEmailToStakeholder();
     }
 
     /**
@@ -1813,6 +1823,26 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
             $changed['Status']['after'] == 'in_progress') {
             $this->QuestionnaireSubmission()->QuestionnaireStatus = 'submitted';
             $this->QuestionnaireSubmission()->write();
+        }
+    }
+
+    /**
+     * send emails to the stakeholder group
+     * @return void
+     */
+    public function sendEmailToStakeholder() : void
+    {
+        if ($this->Task()->IsStakeholdersSelected == 'Yes' && !$this->IsStakeholdersEmailSent) {
+            if (!$this->Task()->StakeholdersGroup()->exists()) {
+                throw new Exception('Sorry, no stakeholders group exist.');
+            }
+            $members = Group::get()->filter('code', $this->Task()->StakeholdersGroup()->Code)->first()->Members();
+            $this->IsStakeholdersEmailSent = 1;
+            $queuedJobService = QueuedJobService::create();
+            $queuedJobService->queueJob(
+                new SendTaskStakeholdersEmailJob($this, $members),
+                date('Y-m-d H:i:s', time() + 30)
+            );
         }
     }
 
