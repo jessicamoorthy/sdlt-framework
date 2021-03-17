@@ -743,7 +743,9 @@ class Questionnaire extends DataObject implements ScaffoldingProvider, Permissio
         $obj['name'] = $questionnaire->Name;
         $obj['type'] =  $questionnaire->Type;
         $obj['keyInformation'] = $questionnaire->KeyInformation ?? '';
-        $obj['riskCalculation'] = $questionnaire->RiskCalculation;
+        if ($obj['type'] == "RiskQuestionnaire") {
+            $obj['riskCalculation'] = $questionnaire->RiskCalculation;
+        }
         $obj['bypassApproval'] = (boolean) $questionnaire->ApprovalIsNotRequired;
         $obj['doesSubmissionExpire'] = $questionnaire->DoesSubmissionExpire;
         $obj['expireAfterDays '] = $questionnaire->ExpireAfterDays;
