@@ -34,6 +34,7 @@ use Symbiote\QueuedJobs\Services\QueuedJobService;
 use NZTA\SDLT\Job\SendTaskSubmissionEmailJob;
 use NZTA\SDLT\Job\SendTaskApprovalLinkEmailJob;
 use NZTA\SDLT\Job\SendTaskStakeholdersEmailJob;
+use NZTA\SDLT\Job\SendTasksCompletedEmailJob;
 use SilverStripe\Forms\TextField;
 use NZTA\SDLT\Model\JiraTicket;
 use SilverStripe\Security\Group;
@@ -119,6 +120,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         'IsApprovalRequired' => 'Boolean',
         'IsTaskApprovalLinkSent' => 'Boolean',
         'IsStakeholdersEmailSent' => 'Boolean',
+        'IsTasksCompletedEmailSent' => 'Boolean',
         'RiskResultData' => 'Text',
         'CVATaskData' => 'Text',
     ];
@@ -339,7 +341,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
           'AnswerData',
           'Result',
           'SubmitterID',
-          'TaskApproverID'
+          'TaskApproverID',
+          'IsTasksCompletedEmailSent'
         ]);
 
         $fields->addFieldsToTab(
@@ -906,6 +909,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->write();
+                    $submission->sendTasksCompletedEmail();
                     return $submission;
                 }
             })
@@ -956,11 +960,9 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->Status = TaskSubmission::STATUS_COMPLETE;
-<<<<<<< HEAD
                     $submission->completedByID = $member->ID;
-=======
                     $submission->sendEmailToStakeholder();
->>>>>>> NEW: RM#81890 Add stakeholders group to Tasks and move email formats to site config page
+
                     $submission->RiskResultData = $submission->getRiskResultBasedOnAnswer();
 
                     // if task approval requires then set status to waiting for approval
@@ -994,6 +996,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     );
 
                     $submission->write();
+                    $submission->sendTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -1242,6 +1245,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $submission->Status = TaskSubmission::STATUS_APPROVED;
                     $submission->TaskApproverID = $member->ID;
                     $submission->write();
+                    $submission->sendTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -1952,6 +1956,35 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         return $group->Members();
     }
 
+     /**
+      * If all sibling tasks are completed or approved then send an email to notify submitter
+      *
+      * @return void
+      */
+    public function sendTasksCompletedEmail()
+    {
+        $siblingTasks = $this->getSiblingTaskSubmissions();
+
+        if ($siblingTasks && $siblingTasks->Count()) {
+            $sendNotifyingEmail = true;
+            foreach ($siblingTasks as $siblingTask) {
+                if ($this->isSiblingTaskCompleted($siblingTask) == false) {
+                    $sendNotifyingEmail = false;
+                }
+            }
+        }
+
+        if ($sendNotifyingEmail && !$this->IsTasksCompletedEmailSent) {
+            $this->IsTasksCompletedEmailSent = 1;
+            $this->write();
+            $qs = QueuedJobService::create();
+            $qs->queueJob(
+                new SendTasksCompletedEmailJob($this),
+                date('Y-m-d H:i:s', time() + 30)
+            );
+        }
+    }
+
     /**
      * @param string $string     string
      * @param string $linkPrefix prefix before the link
@@ -1963,6 +1996,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         $SubmitterName = $this->Submitter()->Name;
         $SubmitterEmail = $this->Submitter()->Email;
         $productName = $this->QuestionnaireSubmission()->ProductName;
+        $questionnaireLink = $this->QuestionnaireSubmission()->getSummaryPageLink();
 
         if ($linkPrefix) {
             $link = $this->AnonymousAccessLink($linkPrefix);
@@ -1975,6 +2009,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         $string = str_replace('{$submitterName}', $SubmitterName, $string);
         $string = str_replace('{$submitterEmail}', $SubmitterEmail, $string);
         $string = str_replace('{$productName}', $productName, $string);
+        $string = str_replace('{$questionnaireLink}', $questionnaireLink, $string);
 
         return $string;
     }
