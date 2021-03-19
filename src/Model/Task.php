@@ -23,6 +23,7 @@ use NZTA\SDLT\Model\RiskRating;
 use NZTA\SDLT\Model\TaskSubmission;
 use NZTA\SDLT\Traits\SDLTModelPermissions;
 use NZTA\SDLT\Traits\SDLTRiskCalc;
+use NZTA\SDLT\Model\TaskSubmissionEmail;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\GridField\GridField;
@@ -34,6 +35,7 @@ use SilverStripe\Forms\GridField\GridFieldPaginator;
 use SilverStripe\Forms\GridField\GridField_ActionMenu;
 use SilverStripe\Forms\ListboxField;
 use SilverStripe\Forms\LiteralField;
+use SilverStripe\Forms\OptionsetField;
 use SilverStripe\GraphQL\OperationResolver;
 use SilverStripe\GraphQL\Scaffolding\Interfaces\ScaffoldingProvider;
 use SilverStripe\GraphQL\Scaffolding\Scaffolders\SchemaScaffolder;
@@ -86,6 +88,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
         'TaskType' => 'Enum(array("questionnaire", "selection", "risk questionnaire", "security risk assessment", "control validation audit"))',
         'LockAnswersWhenComplete' => 'Boolean',
         'IsApprovalRequired' => 'Boolean',
+        'IsStakeholdersSelected' => "Enum('No,Yes', 'No')",
         'RiskCalculation' => "Enum('NztaApproxRepresentation,Maximum')",
         'ComponentTarget' => "Enum('JIRA Cloud,Local')", // when task type is SRA
         'HideRiskWeightsAndScore' => 'Boolean' // when task type is risk questionnaire
@@ -104,6 +107,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
      */
     private static $has_one = [
         'ApprovalGroup' => Group::class,
+        'StakeholdersGroup' => Group::class,
         //this is a task of type "risk questionnaire" to grab question data from
         //it must be filtered to RiskQuestionnaires only, and is required
         'RiskQuestionnaireDataSource' => Task::class
@@ -138,7 +142,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
      * @var array
      */
     private static $many_many = [
-        'DefaultSecurityComponents' => SecurityComponent::class
+        'DefaultSecurityComponents' => SecurityComponent::class,
     ];
 
     /**
@@ -256,6 +260,24 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
                 $fields
                     ->dataFieldByName('ApprovalGroupID')
                     ->setDescription('Please select the task approval group.'),
+                OptionsetField::create(
+                    'IsStakeholdersSelected',
+                    'Email Stakeholders when task is ready for review (Complete or Awaiting Approval)?',
+                    $this->dbObject('IsStakeholdersSelected')->enumValues()
+                )->setDescription(
+                    sprintf(
+                        '<p>If this is not set, emails will not'
+                        . ' be sent to the selected stakeholders group.</p>'
+                        . '<p>Please click on the <a href="%s"> Email Format Link </a>'
+                        . 'to add and edit the email format.</p>',
+                        $this->getTaskEmailLink()
+                    )
+                ),
+                $fields
+                    ->dataFieldByName('StakeholdersGroupID')
+                    ->displayIf('IsStakeholdersSelected')
+                    ->isEqualTo('Yes')
+                    ->end()
             ]
         );
 
@@ -384,6 +406,24 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
         );
 
         return $usedOnGridfield;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTaskEmailLink()
+    {
+        $taskEmail = $this->SubmissionEmails()->first();
+        $taskID = $this->ID;
+
+        if ($taskEmail) {
+            $emailId = $taskEmail->ID;
+            $link = sprintf('admin/questionnaire-admin/NZTA-SDLT-Model-Task/EditForm/field/NZTA-SDLT-Model-Task/item/%d/ItemEditForm/field/SubmissionEmails/item/%d', $taskID, $emailId);
+        } else {
+             $link = sprintf('admin/questionnaire-admin/NZTA-SDLT-Model-Task/EditForm/field/NZTA-SDLT-Model-Task/item/%d/ItemEditForm/field/SubmissionEmails/item/new', $taskID);
+        }
+
+        return $link;
     }
 
     /**
@@ -645,6 +685,11 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
                     $this->Name
                 )
             );
+        }
+
+        // validation for StakeholdersGroup
+        if ($this->IsStakeholdersSelected == 'Yes' && !$this->StakeholdersGroupID) {
+            $result->addError('Please select stakeholders group.');
         }
 
         return $result;

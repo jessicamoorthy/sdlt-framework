@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file contains the "SendTaskSubmissionEmailJob" class.
+ * This file contains the "SendTaskStakeholdersEmailJob" class.
  *
  * @category SilverStripe_Project
  * @package SDLT
@@ -23,14 +23,16 @@ use NZTA\SDLT\Model\QuestionnaireEmail;
 /**
  * A QueuedJob is specifically designed to be invoked from an onAfterWrite() process
  */
-class SendTaskSubmissionEmailJob extends AbstractQueuedJob implements QueuedJob
+class SendTaskStakeholdersEmailJob extends AbstractQueuedJob implements QueuedJob
 {
     /**
      * @param TaskSubmission $taskSubmission taskSubmission
+     * @param Member         $members    member
      */
-    public function __construct($taskSubmission = null)
+    public function __construct($taskSubmission = null, $members = [])
     {
         $this->taskSubmission = $taskSubmission;
+        $this->members = $members;
     }
 
     /**
@@ -39,7 +41,7 @@ class SendTaskSubmissionEmailJob extends AbstractQueuedJob implements QueuedJob
     public function getTitle()
     {
         return sprintf(
-            'Initialising task submission email for - %s (%d)',
+            'Initialising task stakeholders email for - %s (%d)',
             $this->taskSubmission->Task()->Name,
             $this->taskSubmission->ID
         );
@@ -59,8 +61,9 @@ class SendTaskSubmissionEmailJob extends AbstractQueuedJob implements QueuedJob
      */
     public function process()
     {
-        $member = $this->taskSubmission->Submitter();
-        $this->sendEmail($member->FirstName, $member->Email);
+        foreach ($this->members as $member) {
+            $this->sendEmail($member->FirstName, $member->Email);
+        }
 
         $this->isComplete = true;
     }
@@ -74,14 +77,14 @@ class SendTaskSubmissionEmailJob extends AbstractQueuedJob implements QueuedJob
     public function sendEmail($name = '', $toEmail = '')
     {
         foreach ($this->taskSubmission->Task()->SubmissionEmails() as $emailDetails) {
-            $sub = $this->taskSubmission->replaceVariable($emailDetails->SubmitterEmailSubject);
+            $sub = $this->taskSubmission->replaceVariable($emailDetails->StakeholdersEmailSubject);
             $from = $emailDetails->FromEmailAddress;
 
             $email = Email::create()
                 ->setHTMLTemplate('Email\\EmailTemplate')
                 ->setData([
                     'Name' => $name,
-                    'Body' => $this->taskSubmission->replaceVariable($emailDetails->SubmitterEmailBody, $emailDetails->LinkPrefix),
+                    'Body' => $this->taskSubmission->replaceVariable($emailDetails->StakeholdersEmailBody, $emailDetails->LinkPrefix),
                     'EmailSignature' => $emailDetails->EmailSignature
                 ])
                 ->setFrom($from)
