@@ -120,6 +120,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         'ApprovalOverrideBySecurityArchitect' => 'Boolean',
         'QuestionnaireLevelTaskIDs' => 'Varchar(255)',
         'RiskResultData' => 'Text',
+        'IsTasksCompletedEmailSent' => 'Boolean',
     ];
     // @codingStandardsIgnoreEnd
 
@@ -596,7 +597,8 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                 $fields->dataFieldByName('SubmitterName'),
                 $fields->dataFieldByName('SubmitterEmail'),
                 $fields->dataFieldByName('IsStartLinkEmailSent'),
-                $fields->dataFieldByName('IsSubmitLinkEmailSent')
+                $fields->dataFieldByName('IsSubmitLinkEmailSent'),
+                $fields->dataFieldByName('IsTasksCompletedEmailSent')
             ]
         );
 
