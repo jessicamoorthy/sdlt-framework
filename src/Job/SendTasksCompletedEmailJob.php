@@ -1,7 +1,7 @@
 <?php
 
 /**
- * This file contains the "SendTasksCompletedEmailJob" class.
+ * This file contains the "SendAllTheTasksCompletedEmailJob" class.
  *
  * @category SilverStripe_Project
  * @package SDLT
@@ -24,7 +24,7 @@ use NZTA\SDLT\Model\QuestionnaireEmail;
  * A QueuedJob is specifically designed to be invoked the last task is approved
  * or completed in a submission
  */
-class SendTasksCompletedEmailJob extends AbstractQueuedJob implements QueuedJob
+class SendAllTheTasksCompletedEmailJob extends AbstractQueuedJob implements QueuedJob
 {
     /**
      * @param QuestionnaireSubmission $questionnaireSubmission questionnaireSubmission
@@ -40,7 +40,7 @@ class SendTasksCompletedEmailJob extends AbstractQueuedJob implements QueuedJob
     public function getTitle()
     {
         return sprintf(
-            'Initialising tasks completed email for - %s (%d)',
+            'Initialising all the tasks completed email for - %s (%d)',
             $this->questionnaireSubmission->Questionnaire()->Name,
             $this->questionnaireSubmission->ID
         );
@@ -77,7 +77,7 @@ class SendTasksCompletedEmailJob extends AbstractQueuedJob implements QueuedJob
     {
         $emailDetails = QuestionnaireEmail::get()->first();
         $sub = $this->questionnaireSubmission->replaceVariable(
-            $emailDetails->TasksCompletedEmailSubject
+            $emailDetails->AllTheTasksCompletedEmailSubject
         );
         $from = $emailDetails->FromEmailAddress;
 
@@ -86,7 +86,7 @@ class SendTasksCompletedEmailJob extends AbstractQueuedJob implements QueuedJob
             ->setData([
                 'Name' => $name,
                 'Body' => $this->questionnaireSubmission->replaceVariable(
-                    $emailDetails->TasksCompletedEmailBody,
+                    $emailDetails->AllTheTasksCompletedEmailBody,
                     $emailDetails->LinkPrefix
                 ),
                 'EmailSignature' => $emailDetails->EmailSignature

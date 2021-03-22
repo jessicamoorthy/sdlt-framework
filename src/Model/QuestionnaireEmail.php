@@ -55,8 +55,8 @@ class QuestionnaireEmail extends DataObject
         'DeniedNotificationEmailBody' => 'HTMLText',
         'QuestionnaireSubmittedEmailSubject' => 'Text',
         'QuestionnaireSubmittedEmailBody' => 'HTMLText',
-        'TasksCompletedEmailSubject' => 'Text',
-        'TasksCompletedEmailBody' => 'HTMLText',
+        'AllTheTasksCompletedEmailSubject' => 'Text',
+        'AllTheTasksCompletedEmailBody' => 'HTMLText',
         'EmailSignature' => 'HTMLText',
     ];
 
@@ -151,15 +151,15 @@ class QuestionnaireEmail extends DataObject
         );
 
         $fields->addFieldsToTab(
-            'Root.TasksCompletedEmail',
+            'Root.AllTheTasksCompletedEmail',
             [
                 TextField::create(
-                    'TasksCompletedEmailSubject',
-                    'Tasks Completed Email Subject'
+                    'AllTheTasksCompletedEmailSubject',
+                    'All The Tasks Completed Email Subject'
                 ),
                 HtmlEditorField::create(
-                    'TasksCompletedEmailBody',
-                    'Tasks Completed Email Body'
+                    'AllTheTasksCompletedEmailBody',
+                    'All The Tasks Completed Email Body'
                 ),
                 LiteralField::create(
                     'QuestionnaireSubmittedEmailText',

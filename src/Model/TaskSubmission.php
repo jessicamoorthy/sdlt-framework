@@ -34,7 +34,7 @@ use Symbiote\QueuedJobs\Services\QueuedJobService;
 use NZTA\SDLT\Job\SendTaskSubmissionEmailJob;
 use NZTA\SDLT\Job\SendTaskApprovalLinkEmailJob;
 use NZTA\SDLT\Job\SendTaskStakeholdersEmailJob;
-use NZTA\SDLT\Job\SendTasksCompletedEmailJob;
+use NZTA\SDLT\Job\SendAllTheTasksCompletedEmailJob;
 use SilverStripe\Forms\TextField;
 use NZTA\SDLT\Model\JiraTicket;
 use SilverStripe\Security\Group;
@@ -907,7 +907,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->write();
-                    $submission->sendTasksCompletedEmail();
+                    $submission->sendAllTheTasksCompletedEmail();
                     return $submission;
                 }
             })
@@ -993,7 +993,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     );
 
                     $submission->write();
-                    $submission->sendTasksCompletedEmail();
+                    $submission->sendAllTheTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -1242,7 +1242,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $submission->Status = TaskSubmission::STATUS_APPROVED;
                     $submission->TaskApproverID = $member->ID;
                     $submission->write();
-                    $submission->sendTasksCompletedEmail();
+                    $submission->sendAllTheTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -2410,7 +2410,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
      *
      * @return void
      */
-    public function sendTasksCompletedEmail()
+    public function sendAllTheTasksCompletedEmail()
     {
         $siblingTasks = $this->getSiblingTaskSubmissions();
         $sendNotifyingEmail = true;
@@ -2424,13 +2424,13 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
             }
         }
 
-        if ($sendNotifyingEmail && !$this->QuestionnaireSubmission()->IsTasksCompletedEmailSent) {
+        if ($sendNotifyingEmail && !$this->QuestionnaireSubmission()->IsAllTheTasksCompletedEmailSent) {
             $questionnaireSubmission = $this->QuestionnaireSubmission();
-            $questionnaireSubmission->IsTasksCompletedEmailSent = 1;
+            $questionnaireSubmission->IsAllTheTasksCompletedEmailSent = 1;
             $questionnaireSubmission->write();
             $qs = QueuedJobService::create();
             $qs->queueJob(
-                new SendTasksCompletedEmailJob($this->QuestionnaireSubmission()),
+                new SendAllTheTasksCompletedEmailJob($this->QuestionnaireSubmission()),
                 date('Y-m-d H:i:s', time() + 30)
             );
         }
