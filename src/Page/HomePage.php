@@ -106,6 +106,11 @@ class HomePage extends Page
             $errorPageNotFound = new ErrorPage();
             $errorPageNotFound->ErrorCode = 404;
             $errorPageNotFound->Title = _t('SilverStripe\\ErrorPage\\ErrorPage.DEFAULTERRORPAGETITLE', 'Page not found');
+            $errorPageNotFound->Content = _t(
+                __CLASS__.'.DEFAULTPAGENOTFOUNDCONTENT',
+                '<p>Sorry, it seems you were trying to access a page that does not exist.</p>
+                <p>Please check the spelling of the URL you were trying to access and try again.</p>'
+            );
             $errorPageNotFound->write();
             $errorPageNotFound->copyVersionToStage(Versioned::DRAFT, Versioned::LIVE);
             $errorPageNotFound->flushCache();
@@ -115,6 +120,13 @@ class HomePage extends Page
             $errorPageServerError = new ErrorPage();
             $errorPageServerError->ErrorCode = 500;
             $errorPageServerError->Title = _t('SilverStripe\\ErrorPage\\ErrorPage.DEFAULTSERVERERRORPAGETITLE', 'Server error');
+            $errorPageServerError->Content = _t(
+                __CLASS__.'.DEFAULTSERVERERRORCONTENT',
+                '<p>Sorry, it appears something is not working correctly. We are aware and trying to resolve the issue.</p>
+                <p>In the meantime, here is what you can do:</p>
+                <p>Refresh the page</p>
+                <p>Try again in 30 minutes</p>'
+            );
             $errorPageServerError->write();
             $errorPageServerError->copyVersionToStage(Versioned::DRAFT, Versioned::LIVE);
             $errorPageServerError->flushCache();
