@@ -45,7 +45,7 @@ class TaskSubmissionEmail extends DataObject
         'ApprovalLinkEmailSubject' => 'Text',
         'ApprovalLinkEmailBody' => 'HTMLText',
         'StakeholdersEmailSubject' => 'Text',
-        'StakeholdersEmailBody' => 'HTMLText',
+        'StakeholdersEmailBody' => 'HTMLText'
     ];
 
     /**

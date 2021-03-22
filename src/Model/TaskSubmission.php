@@ -34,6 +34,7 @@ use Symbiote\QueuedJobs\Services\QueuedJobService;
 use NZTA\SDLT\Job\SendTaskSubmissionEmailJob;
 use NZTA\SDLT\Job\SendTaskApprovalLinkEmailJob;
 use NZTA\SDLT\Job\SendTaskStakeholdersEmailJob;
+use NZTA\SDLT\Job\SendTasksCompletedEmailJob;
 use SilverStripe\Forms\TextField;
 use NZTA\SDLT\Model\JiraTicket;
 use SilverStripe\Security\Group;
@@ -906,6 +907,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->write();
+                    $submission->sendTasksCompletedEmail();
                     return $submission;
                 }
             })
@@ -991,6 +993,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     );
 
                     $submission->write();
+                    $submission->sendTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -1239,6 +1242,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $submission->Status = TaskSubmission::STATUS_APPROVED;
                     $submission->TaskApproverID = $member->ID;
                     $submission->write();
+                    $submission->sendTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -1834,13 +1838,24 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                 throw new Exception('Sorry, no stakeholders group exist.');
             }
 
-            $members = $this->Task()->StakeholdersGroup()->Members();
-            $this->IsStakeholdersEmailSent = 1;
-            $queuedJobService = QueuedJobService::create();
-            $queuedJobService->queueJob(
-                new SendTaskStakeholdersEmailJob($this, $members),
-                date('Y-m-d H:i:s', time() + 30)
-            );
+            // When we use $members = $this->Task()->StakeholdersGroup()->Members();
+            // we get an error "Error: Cannot serialize Symfony\Component\Cache\Simple\PhpFilesCache".
+            // So we get $members in the following way to solve the error:
+            $members = Group::get()->filter(
+                'code',
+                $this->Task()->StakeholdersGroup()->Code
+                )
+                ->first()
+                ->Members();
+
+            if ($members && $members->Count()) {
+                $this->IsStakeholdersEmailSent = 1;
+                $queuedJobService = QueuedJobService::create();
+                $queuedJobService->queueJob(
+                    new SendTaskStakeholdersEmailJob($this, $members),
+                    date('Y-m-d H:i:s', time() + 30)
+                );
+            }
         }
     }
 
@@ -2387,5 +2402,37 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         }
 
         return false;
+    }
+
+
+    /**
+     * If all sibling tasks are completed or approved then send an email to notify submitter
+     *
+     * @return void
+     */
+    public function sendTasksCompletedEmail()
+    {
+        $siblingTasks = $this->getSiblingTaskSubmissions();
+        $sendNotifyingEmail = true;
+
+        if ($siblingTasks && $siblingTasks->Count()) {
+            foreach ($siblingTasks as $siblingTask) {
+                if ($this->isSiblingTaskCompleted($siblingTask) == false) {
+                    $sendNotifyingEmail = false;
+                    break;
+                }
+            }
+        }
+
+        if ($sendNotifyingEmail && !$this->QuestionnaireSubmission()->IsTasksCompletedEmailSent) {
+            $questionnaireSubmission = $this->QuestionnaireSubmission();
+            $questionnaireSubmission->IsTasksCompletedEmailSent = 1;
+            $questionnaireSubmission->write();
+            $qs = QueuedJobService::create();
+            $qs->queueJob(
+                new SendTasksCompletedEmailJob($this->QuestionnaireSubmission()),
+                date('Y-m-d H:i:s', time() + 30)
+            );
+        }
     }
 }
