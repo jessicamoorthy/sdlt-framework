@@ -75,7 +75,6 @@ class ControlWeightSet extends DataObject
     {
         $fields = parent::getCMSFields();
 
-
         $fields->removeByName([
             'RiskID',
             'SecurityComponentID',

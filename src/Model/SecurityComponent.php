@@ -325,7 +325,7 @@ class SecurityComponent extends DataObject implements ScaffoldingProvider, Permi
         $obj['description'] = $component->Description ?? '';
 
         foreach ($component->Controls() as $control) {
-            $obj['controls'][] = SecurityControl::export_record($control);
+            $obj['controls'][] = SecurityControl::export_record($control, $component->ID);
         }
 
         $returnobj['securityComponents'][] = $obj;
