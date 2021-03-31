@@ -323,7 +323,7 @@ class SecurityControl extends DataObject implements ScaffoldingProvider
      * @param integer $control control
      * @return string
      */
-    public static function export_record($control)
+    public static function export_record($control, $componentID)
     {
         $obj['name'] = $control->Name;
         $obj['description'] = $control->Description ?? '';
@@ -331,7 +331,9 @@ class SecurityControl extends DataObject implements ScaffoldingProvider
         $obj['implementationEvidence'] = $control->ImplementationEvidence ?? '';
 
         foreach ($control->ControlWeightSets() as $weight) {
-            $obj['controlWeightSets'][] = ControlWeightSet::export_record($weight);
+            if ($weight->SecurityComponentID == $componentID) {
+                $obj['controlWeightSets'][] = ControlWeightSet::export_record($weight);
+            }
         }
 
         return $obj;
