@@ -14,10 +14,12 @@ namespace NZTA\SDLT\GraphQL;
 
 use Exception;
 use SilverStripe\GraphQL\Scaffolding\Interfaces\ScaffoldingProvider;
+use SilverStripe\GraphQL\Scaffolding\Scaffolders\DataObjectScaffolder;
 use SilverStripe\GraphQL\Scaffolding\Scaffolders\SchemaScaffolder;
 use GraphQL\Type\Definition\ResolveInfo;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
+use SilverStripe\Core\Convert;
 
 /**
  * Class MemberGraphQLProvider
@@ -30,7 +32,17 @@ class MemberGraphQLProvider implements ScaffoldingProvider
      */
     public function provideGraphQLScaffolding(SchemaScaffolder $scaffolder)
     {
-        $scaffolder
+        $dataObjectScaffolder = $this->provideGraphQLScaffoldingForEntityType($scaffolder);
+        $this->provideReadMember($dataObjectScaffolder);
+    }
+
+    /**
+     * @param SchemaScaffolder $scaffolder Scaffolder
+     * @return SchemaScaffolder
+     */
+    public function provideGraphQLScaffoldingForEntityType(SchemaScaffolder $scaffolder)
+    {
+        $dataObjectScaffolder = $scaffolder
             ->type(Member::class)
             ->addFields([
                 'ID',
@@ -39,19 +51,38 @@ class MemberGraphQLProvider implements ScaffoldingProvider
                 'Surname',
                 'IsSA',
                 'IsCISO'
-            ])
+            ]);
+
+        return $dataObjectScaffolder;
+    }
+
+    /**
+     * @param DataObjectScaffolder $scaffolder The scaffolder of the data object
+     * @return DataObjectScaffolder
+     */
+    public function provideReadMember(DataObjectScaffolder $scaffolder)
+    {
+        $scaffolder
             ->operation(SchemaScaffolder::READ)
-            ->setName('readCurrentMember')
+            ->setName('readMember')
+            ->addArg('Type', 'String')
             ->setUsePagination(false)
             ->setResolver(function ($object, array $args, $context, ResolveInfo $info) {
                 $member = Security::getCurrentUser();
+                $type = isset($args['Type']) ? Convert::raw2sql(trim($args['Type'])) : 'Current';
 
                 // Check authentication
                 if (!$member) {
                     throw new Exception('Please log in first...');
                 }
 
-                return Member::get()->filter('ID', $member->ID);
+                if ($type == 'Current') {
+                    return Member::get()->filter('ID', $member->ID);
+                }
+
+                if ($type == 'All') {
+                    return Member::get();
+                }
             })
             ->end();
 

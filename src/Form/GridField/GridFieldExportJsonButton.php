@@ -20,6 +20,10 @@ use SilverStripe\Control\Controller;
 use SilverStripe\Control\HTTPRequest;
 use Ergebnis\Json\Printer\Printer;
 use SilverStripe\Core\Environment;
+use NZTA\SDLT\Job\SendExportJsonDataEmailJob;
+use Symbiote\QueuedJobs\Services\QueuedJobService;
+use SilverStripe\Security\Security;
+use NZTA\SDLT\Helper\ClassSpec;
 
 /**
  * Class GridFieldExportJsonButton
@@ -203,19 +207,44 @@ class GridFieldExportJsonButton implements GridField_ActionProvider, GridField_C
         $fileName = "export-$now.json";
 
         $dataClass = $gridField->getList()->dataClass;
+
         $jsonData = $dataClass::export_record($arguments['Record']);
 
         if (empty($jsonData)) {
             retutn;
         }
+        // If the data is longer than 100000, create a queue job and sent the file in an email,
+        // if not, download the file directly.
+        if (strlen($jsonData) > 100000) {
+            $user = Security::getCurrentUser();
+            $queuedJobService = QueuedJobService::create();
+            $queuedJobService->queueJob(
+                new SendExportJsonDataEmailJob(
+                    $jsonData,
+                    ClassSpec::short_name($dataClass),
+                    $arguments['Record']->Name,
+                    $user->Email,
+                    $user->Name,
+                    $fileName
+                ),
+                date('Y-m-d H:i:s', time() + 30)
+            );
+            $form = $gridField->getForm();
+            $form->sessionMessage(
+                sprintf('Data is created and will be sent to your email address %s soon.',
+                    $user->Email),
+                'good'
+            );
+            return $gridField->redirectBack();
+        } else {
+            //Provides a JSON printer, allowing for flexible indentation.
+            $printer = new Printer();
 
-        //Provides a JSON printer, allowing for flexible indentation.
-        $printer = new Printer();
-        $fileData = $printer->print(
-            $jsonData,
-            '  '
-        );
-
-        return HTTPRequest::send_file($fileData, $fileName, 'text/json');
+            $fileData = $printer->print(
+                $jsonData,
+                '  '
+            );
+            return HTTPRequest::send_file($fileData, $fileName, 'text/json');
+        }
     }
 }

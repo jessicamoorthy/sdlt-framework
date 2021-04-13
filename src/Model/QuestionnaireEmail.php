@@ -55,6 +55,8 @@ class QuestionnaireEmail extends DataObject
         'DeniedNotificationEmailBody' => 'HTMLText',
         'QuestionnaireSubmittedEmailSubject' => 'Text',
         'QuestionnaireSubmittedEmailBody' => 'HTMLText',
+        'AllTheTasksCompletedEmailSubject' => 'Text',
+        'AllTheTasksCompletedEmailBody' => 'HTMLText',
         'EmailSignature' => 'HTMLText',
     ];
 
@@ -144,6 +146,31 @@ class QuestionnaireEmail extends DataObject
                     '<b>{$submitterName}</b> For submitter name<br/>' .
                     '<b>{$submitterEmail}</b> For submitter email<br/>' .
                     '<b>{$summaryLink}</b> For summary link, and it will be replaced by "this link" label.</p>'
+                )
+            ]
+        );
+
+        $fields->addFieldsToTab(
+            'Root.AllTheTasksCompletedEmail',
+            [
+                TextField::create(
+                    'AllTheTasksCompletedEmailSubject',
+                    'All The Tasks Completed Email Subject'
+                ),
+                HtmlEditorField::create(
+                    'AllTheTasksCompletedEmailBody',
+                    'All The Tasks Completed Email Body'
+                ),
+                LiteralField::create(
+                    'QuestionnaireSubmittedEmailText',
+                    '<p class="message notice">You can use the following variable ' .
+                    'substitutions in the email body and subject:<br/><br/>' .
+                    '<b>{$questionnaireName}</b> For questionnaire name<br/>' .
+                    '<b>{$productName}</b> For product name<br/>' .
+                    '<b>{$submitterName}</b> For submitter name<br/>' .
+                    '<b>{$submitterEmail}</b> For submitter email<br/>' .
+                    '<b>{$summaryLink}</b> For summary link, and it will be ' .
+                    'replaced by "this link" label.</p>'
                 )
             ]
         );

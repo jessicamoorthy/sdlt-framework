@@ -29,6 +29,8 @@ use SilverStripe\Forms\GridField\GridFieldEditButton;
 use Symbiote\GridFieldExtensions\GridFieldEditableColumns;
 use NZTA\SDLT\Traits\SDLTModelPermissions;
 use SilverStripe\ORM\FieldType\DBInt;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\SnapshotAdmin\SnapshotHistoryExtension;
 
 /**
  * Class AnswerActionField
@@ -66,6 +68,14 @@ class AnswerActionField extends DataObject implements ScaffoldingProvider
         'SortOrder' => 'Int',
         'Result' => 'Varchar(255)',
         'IsApprovalForTaskRequired' => 'Boolean', // only when task's action
+    ];
+
+    /**
+     * @var array
+     */
+    private static $extensions = [
+        Versioned::class . '.versioned',
+        SnapshotHistoryExtension::class
     ];
 
     /**
@@ -233,6 +243,21 @@ class AnswerActionField extends DataObject implements ScaffoldingProvider
     }
 
     /**
+     * get current object link in model admin
+     * @return string
+     */
+    public function getLink()
+    {
+        $questionLink = $this->Question->getLink("");
+        if ($questionLink) {
+            $link = $questionLink . "/ItemEditForm/field/AnswerActionFields/item/" . $this->ID;
+            return $link;
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * validate the Approval Group based on the IsApprovalForTaskRequired flag
      *
      * @return ValidationResult
@@ -247,6 +272,17 @@ class AnswerActionField extends DataObject implements ScaffoldingProvider
         }
 
         return $result;
+    }
+
+    /**
+     * Deal with pre-write processes.
+     *
+     * @return void
+     */
+    public function onBeforeWrite()
+    {
+        parent::onBeforeWrite();
+        $this->auditService->audit($this);
     }
 
     /**

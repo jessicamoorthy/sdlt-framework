@@ -15,19 +15,14 @@ namespace NZTA\SDLT\Page;
 
 use NZTA\SDLT\Model\Pillar;
 use Page;
+use SilverStripe\CMS\Model\SiteTree;
 use NZTA\SDLT\Controller\HomePageController;
 use NZTA\SDLT\Model\Task;
 use SilverStripe\ORM\ValidationException;
-use SilverStripe\Security\Member;
-use SilverStripe\Security\Permission;
-use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\ORM\DB;
 use SilverStripe\CMS\Controllers\RootURLController;
 use SilverStripe\Versioned\Versioned;
-use SilverStripe\Forms\TextField;
-use SilverStripe\Forms\GridField\GridField;
-use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
-use SilverStripe\ORM\DataObject;
+use SilverStripe\ErrorPage\ErrorPage;
 
 /**
  * Class HomePage
@@ -90,7 +85,13 @@ class HomePage extends Page
             if (!SiteTree::get_by_link($defaultHomepage)) {
                 $homepage = new HomePage();
                 $homepage->Title = _t(__CLASS__.'.DEFAULTHOMETITLE', 'Home');
-                $homepage->Content = _t(__CLASS__.'.DEFAULTHOMECONTENT', '<p>Welcome to SilverStripe! This is the default homepage. You can edit this page by opening <a href="admin/">the CMS</a>.</p><p>You can now access the <a href="http://docs.silverstripe.org">developer documentation</a>, or begin the <a href="http://www.silverstripe.org/learn/lessons">SilverStripe lessons</a>.</p>');
+                $homepage->Content = _t(
+                    __CLASS__.'.DEFAULTHOMECONTENT',
+                    '<p>Welcome to SilverStripe! This is the default homepage.
+                    You can edit this page by opening <a href="admin/">the CMS</a>.</p>
+                    <p>You can now access the <a href="http://docs.silverstripe.org">developer documentation</a>,
+                    or begin the <a href="http://www.silverstripe.org/learn/lessons">SilverStripe lessons</a>.</p>'
+                );
                 $homepage->URLSegment = $defaultHomepage;
                 $homepage->Sort = 1;
                 $homepage->write();
@@ -98,6 +99,38 @@ class HomePage extends Page
                 $homepage->flushCache();
                 DB::alteration_message('Home page created', 'created');
             }
+        }
+
+        if (!(ErrorPage::get()->Count())) {
+            // create 404 error page
+            $errorPageNotFound = new ErrorPage();
+            $errorPageNotFound->ErrorCode = 404;
+            $errorPageNotFound->Title = _t('SilverStripe\\ErrorPage\\ErrorPage.DEFAULTERRORPAGETITLE', 'Page not found');
+            $errorPageNotFound->Content = _t(
+                __CLASS__.'.DEFAULTPAGENOTFOUNDCONTENT',
+                '<p>Sorry, it seems you were trying to access a page that does not exist.</p>
+                <p>Please check the spelling of the URL you were trying to access and try again.</p>'
+            );
+            $errorPageNotFound->write();
+            $errorPageNotFound->copyVersionToStage(Versioned::DRAFT, Versioned::LIVE);
+            $errorPageNotFound->flushCache();
+            DB::alteration_message('404 error page created', 'created');
+
+            // create 500 error page
+            $errorPageServerError = new ErrorPage();
+            $errorPageServerError->ErrorCode = 500;
+            $errorPageServerError->Title = _t('SilverStripe\\ErrorPage\\ErrorPage.DEFAULTSERVERERRORPAGETITLE', 'Server error');
+            $errorPageServerError->Content = _t(
+                __CLASS__.'.DEFAULTSERVERERRORCONTENT',
+                '<p>Sorry, it appears something is not working correctly. We are aware and trying to resolve the issue.</p>
+                <p>In the meantime, here is what you can do:</p>
+                <p>Refresh the page</p>
+                <p>Try again in 30 minutes</p>'
+            );
+            $errorPageServerError->write();
+            $errorPageServerError->copyVersionToStage(Versioned::DRAFT, Versioned::LIVE);
+            $errorPageServerError->flushCache();
+            DB::alteration_message('500 error page created', 'created');
         }
     }
 }

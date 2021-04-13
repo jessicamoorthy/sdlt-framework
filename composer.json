@@ -14,7 +14,8 @@
         "symbiote/silverstripe-multivaluefield": "^5.0",
         "tractorcow/silverstripe-colorpicker": "^4.0",
         "swaggest/json-schema": "^0.12.24",
-        "ergebnis/json-printer": "^3.0"
+        "ergebnis/json-printer": "^3.0",
+        "silverstripe/versioned-snapshot-admin": "dev-master#ad702dce09cc5105869a779edffcb47dc02592de"
     },
     "require-dev": {
         "phpunit/phpunit": "^5.7",

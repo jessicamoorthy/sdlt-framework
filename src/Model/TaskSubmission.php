@@ -33,6 +33,8 @@ use SilverStripe\Control\Director;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use NZTA\SDLT\Job\SendTaskSubmissionEmailJob;
 use NZTA\SDLT\Job\SendTaskApprovalLinkEmailJob;
+use NZTA\SDLT\Job\SendTaskStakeholdersEmailJob;
+use NZTA\SDLT\Job\SendAllTheTasksCompletedEmailJob;
 use SilverStripe\Forms\TextField;
 use NZTA\SDLT\Model\JiraTicket;
 use SilverStripe\Security\Group;
@@ -98,6 +100,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
      */
     private $securityRiskAssessmentData = '';
 
+    private $CanUpdateTask = false;
+
     /**
      * @var array
      */
@@ -115,6 +119,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         'JiraKey' => 'Varchar(255)',
         'IsApprovalRequired' => 'Boolean',
         'IsTaskApprovalLinkSent' => 'Boolean',
+        'IsStakeholdersEmailSent' => 'Boolean',
         'RiskResultData' => 'Text',
         'CVATaskData' => 'Text',
     ];
@@ -124,6 +129,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
      */
     private static $has_one = [
         'Submitter' => Member::class,
+        'completedBy' => Member::class,
         'TaskApprover' => Member::class,
         'Task' => Task::class,
         'QuestionnaireSubmission' => QuestionnaireSubmission::class,
@@ -197,6 +203,18 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
             return "";
         }
         return $task->Name;
+    }
+
+
+
+    public function getCanUpdateTask()
+    {
+        return $this->CanUpdateTask;
+    }
+
+    public function setCanUpdateTask($canEdit)
+    {
+        return $this->CanUpdateTask = $canEdit;
     }
 
     /**
@@ -390,6 +408,13 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     Member::get()->map('ID', 'Name')
                 )->setEmptyString(' '),
                 $fields->dataFieldByName('SubmitterIPAddress'),
+                DropdownField::create(
+                    'completedByID',
+                    'Completed By',
+                    Member::get()->map('ID', 'Name')
+                )
+                ->setDescription('Task can be completed by submitter or collaborators.')
+                ->setEmptyString(' ')
             ]
         );
 
@@ -403,7 +428,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $taskApproverList
                 )->setEmptyString(' '),
                 $fields->dataFieldByName('ApprovalGroupID'),
-                $fields->dataFieldByName('IsTaskApprovalLinkSent '),
+                $fields->dataFieldByName('IsTaskApprovalLinkSent'),
+                $fields->dataFieldByName('IsStakeholdersEmailSent')
             ]
         );
 
@@ -487,7 +513,9 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                 'CVATaskDataSource',
                 'SecurityRiskAssessmentData',
                 'Created',
-                'HideWeightsAndScore'
+                'HideWeightsAndScore',
+                'CanUpdateTask',
+                'IsTaskCollborator'
             ]);
 
         $dataObjectScaffolder
@@ -759,6 +787,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $allAnswerData[$args['QuestionID']] = $questionAnswerData;
                     $submission->AnswerData = json_encode($allAnswerData);
                     $submission->Status = TaskSubmission::STATUS_IN_PROGRESS;
+                    $submission->completedByID = (int)Security::getCurrentUser()->ID;
 
                     $submission->write();
 
@@ -869,6 +898,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->Status = TaskSubmission::STATUS_COMPLETE;
+                    $submission->completedByID = $member->ID;
+                    $submission->sendEmailToStakeholder();
 
                     // if task approval requires then set status to waiting for approval
                     if ($submission->IsTaskApprovalRequired) {
@@ -876,6 +907,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->write();
+                    $submission->sendAllTheTasksCompletedEmail();
                     return $submission;
                 }
             })
@@ -926,6 +958,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->Status = TaskSubmission::STATUS_COMPLETE;
+                    $submission->completedByID = $member->ID;
+                    $submission->sendEmailToStakeholder();
                     $submission->RiskResultData = $submission->getRiskResultBasedOnAnswer();
 
                     // if task approval requires then set status to waiting for approval
@@ -959,6 +993,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     );
 
                     $submission->write();
+                    $submission->sendAllTheTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -968,7 +1003,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
 
     /**
      * set task submission status to waitig for approval
-     * and send emai lto the approver
+     * and send email to the approver and stakeholder
      * @return void
      */
     public function setStatusToWatingforApproval() : void
@@ -989,6 +1024,8 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                 );
             }
         }
+
+        $this->SendEmailToStakeholder();
     }
 
     /**
@@ -1205,6 +1242,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $submission->Status = TaskSubmission::STATUS_APPROVED;
                     $submission->TaskApproverID = $member->ID;
                     $submission->write();
+                    $submission->sendAllTheTasksCompletedEmail();
 
                     return $submission;
                 }
@@ -1326,6 +1364,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
             return true;
         }
 
+
         // Correct SecureToken can view it
         if ($taskSubmission->SecureToken && @hash_equals($taskSubmission->SecureToken, $secureToken)) {
             return true;
@@ -1364,8 +1403,10 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                 ->filter('Code', UserGroupConstant::GROUP_CODE_SA)
                 ->exists();
 
+            $isCollborator = $taskSubmission->getIsTaskCollborator();
+
             // Submitter can edit when answers are not locked
-            if ($isSubmitter) {
+            if ($isSubmitter || $isCollborator) {
                 if ($taskSubmission->Status === TaskSubmission::STATUS_IN_PROGRESS ||
                     $taskSubmission->Status === TaskSubmission::STATUS_START ||
                     $taskSubmission->Status === TaskSubmission::STATUS_DENIED) {
@@ -1783,6 +1824,38 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
             $changed['Status']['after'] == 'in_progress') {
             $this->QuestionnaireSubmission()->QuestionnaireStatus = 'submitted';
             $this->QuestionnaireSubmission()->write();
+        }
+    }
+
+    /**
+     * send emails to the stakeholder group
+     * @return void
+     */
+    public function sendEmailToStakeholder() : void
+    {
+        if ($this->Task()->IsStakeholdersSelected == 'Yes' && !$this->IsStakeholdersEmailSent) {
+            if (!$this->Task()->StakeholdersGroup()->exists()) {
+                throw new Exception('Sorry, no stakeholders group exist.');
+            }
+
+            // When we use $members = $this->Task()->StakeholdersGroup()->Members();
+            // we get an error "Error: Cannot serialize Symfony\Component\Cache\Simple\PhpFilesCache".
+            // So we get $members in the following way to solve the error:
+            $members = Group::get()->filter(
+                'code',
+                $this->Task()->StakeholdersGroup()->Code
+                )
+                ->first()
+                ->Members();
+
+            if ($members && $members->Count()) {
+                $this->IsStakeholdersEmailSent = 1;
+                $queuedJobService = QueuedJobService::create();
+                $queuedJobService->queueJob(
+                    new SendTaskStakeholdersEmailJob($this, $members),
+                    date('Y-m-d H:i:s', time() + 30)
+                );
+            }
         }
     }
 
@@ -2304,5 +2377,62 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
         }
 
         return false;
+    }
+
+    /**
+     * Get is logged in user collborator
+     * @return bool
+     */
+    public function getIsTaskCollborator() : bool
+    {
+        $member = Security::getCurrentUser();
+
+        if (!$member || $member == null) {
+            return false;
+        }
+
+        $collboratorIDs = $this->QuestionnaireSubmission()->Collaborators()->column('ID');
+
+        if (empty($collboratorIDs)) {
+            return false;
+        }
+
+        if (in_array($member->ID, $collboratorIDs)) {
+            return true;
+        }
+
+        return false;
+    }
+
+
+    /**
+     * If all sibling tasks are completed or approved then send an email to notify submitter
+     *
+     * @return void
+     */
+    public function sendAllTheTasksCompletedEmail()
+    {
+        $siblingTasks = $this->getSiblingTaskSubmissions();
+        $sendNotifyingEmail = true;
+
+        if ($siblingTasks && $siblingTasks->Count()) {
+            foreach ($siblingTasks as $siblingTask) {
+                if ($this->isSiblingTaskCompleted($siblingTask) == false) {
+                    $sendNotifyingEmail = false;
+                    break;
+                }
+            }
+        }
+
+        if ($sendNotifyingEmail && !$this->QuestionnaireSubmission()->IsAllTheTasksCompletedEmailSent) {
+            $questionnaireSubmission = $this->QuestionnaireSubmission();
+            $questionnaireSubmission->IsAllTheTasksCompletedEmailSent = 1;
+            $questionnaireSubmission->write();
+            $qs = QueuedJobService::create();
+            $qs->queueJob(
+                new SendAllTheTasksCompletedEmailJob($this->QuestionnaireSubmission()),
+                date('Y-m-d H:i:s', time() + 30)
+            );
+        }
     }
 }

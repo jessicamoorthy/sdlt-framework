@@ -34,6 +34,7 @@ use SilverStripe\Forms\GridField\GridFieldPaginator;
 use SilverStripe\Forms\GridField\GridField_ActionMenu;
 use SilverStripe\Forms\ListboxField;
 use SilverStripe\Forms\LiteralField;
+use SilverStripe\Forms\OptionsetField;
 use SilverStripe\GraphQL\OperationResolver;
 use SilverStripe\GraphQL\Scaffolding\Interfaces\ScaffoldingProvider;
 use SilverStripe\GraphQL\Scaffolding\Scaffolders\SchemaScaffolder;
@@ -49,6 +50,8 @@ use SilverStripe\Security\Security;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\PermissionProvider;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\SnapshotAdmin\SnapshotHistoryExtension;
 
 /**
  * Class Task
@@ -84,6 +87,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
         'TaskType' => 'Enum(array("questionnaire", "selection", "risk questionnaire", "security risk assessment", "control validation audit"))',
         'LockAnswersWhenComplete' => 'Boolean',
         'IsApprovalRequired' => 'Boolean',
+        'IsStakeholdersSelected' => "Enum('No,Yes', 'No')",
         'RiskCalculation' => "Enum('NztaApproxRepresentation,Maximum')",
         'ComponentTarget' => "Enum('JIRA Cloud,Local')", // when task type is SRA
         'HideRiskWeightsAndScore' => 'Boolean' // when task type is risk questionnaire
@@ -92,8 +96,17 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
     /**
      * @var array
      */
+    private static $extensions = [
+        Versioned::class . '.versioned',
+        SnapshotHistoryExtension::class,
+    ];
+
+    /**
+     * @var array
+     */
     private static $has_one = [
         'ApprovalGroup' => Group::class,
+        'StakeholdersGroup' => Group::class,
         //this is a task of type "risk questionnaire" to grab question data from
         //it must be filtered to RiskQuestionnaires only, and is required
         'RiskQuestionnaireDataSource' => Task::class
@@ -107,6 +120,13 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
         'SubmissionEmails' => TaskSubmissionEmail::class,
         'LikelihoodThresholds' => LikelihoodThreshold::class, // when task type is SRA
         'RiskRatings' => RiskRating::class, // when task type is SRA
+    ];
+
+    /**
+     * @var array
+     */
+    private static $snapshot_relation_tracking = [
+        'Questions'
     ];
 
     /**
@@ -239,6 +259,24 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
                 $fields
                     ->dataFieldByName('ApprovalGroupID')
                     ->setDescription('Please select the task approval group.'),
+                OptionsetField::create(
+                    'IsStakeholdersSelected',
+                    'Email Stakeholders when task is ready for review (Complete or Awaiting Approval)?',
+                    $this->dbObject('IsStakeholdersSelected')->enumValues()
+                )->setDescription(
+                    sprintf(
+                        '<p>If this is not set, emails will not'
+                        . ' be sent to the selected stakeholders group.</p>'
+                        . '<p>Please click on the <a href="%s"> Email Format Link </a>'
+                        . 'to add and edit the email format.</p>',
+                        $this->getTaskEmailLink()
+                    )
+                ),
+                $fields
+                    ->dataFieldByName('StakeholdersGroupID')
+                    ->displayIf('IsStakeholdersSelected')
+                    ->isEqualTo('Yes')
+                    ->end()
             ]
         );
 
@@ -325,6 +363,11 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
             $this->getCVA_CMSFields($fields);
         }
 
+        if ($historyTab = $fields->fieldByName('Root.History')) {
+            $fields->removeFieldFromTab('Root', 'History');
+            $fields->fieldByName('Root')->push($historyTab);
+        }
+
         return $fields;
     }
 
@@ -365,6 +408,34 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
     }
 
     /**
+     * @return string
+     */
+    public function getTaskEmailLink()
+    {
+        $taskID = $this->ID;
+
+        if ($taskEmail = $this->SubmissionEmails()->first()) {
+            $emailId = $taskEmail->ID;
+            $link = sprintf(
+                'admin/questionnaire-admin/NZTA-SDLT-Model-Task/EditForm/'.
+                'field/NZTA-SDLT-Model-Task/item/%d/ItemEditForm/field/'.
+                'SubmissionEmails/item/%d',
+                $taskID,
+                $emailId
+            );
+        } else {
+            $link = sprintf(
+                'admin/questionnaire-admin/NZTA-SDLT-Model-Task/EditForm/'.
+                'field/NZTA-SDLT-Model-Task/item/%d/ItemEditForm/field/'.
+                'SubmissionEmails/item/new',
+                $taskID
+            );
+        }
+
+        return $link;
+    }
+
+    /**
      * @return array
      */
     public function getQuestionsData()
@@ -384,7 +455,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
             /* @var $question Question */
             $questionData['ID'] = $question->ID;
             $questionData['Title'] = $question->Title;
-            $questionData['Question'] = $question->Question;
+            $questionData['QuestionHeading'] = $question->QuestionHeading;
             $questionData['Description'] = $question->Description;
             $questionData['AnswerFieldType'] = $question->AnswerFieldType;
             $questionData['AnswerInputFields'] = $question->getAnswerInputFieldsData();
@@ -587,61 +658,7 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
     {
         parent::onBeforeWrite();
 
-        $this->audit();
-    }
-
-    /**
-     * Encapsulates all model-specific auditing processes.
-     *
-     * @return void
-     */
-    protected function audit() : void
-    {
-        $user = Security::getCurrentUser();
-
-        // Auditing: CREATE, when:
-        // - A user is present AND
-        // - User is in group that can access admin AND
-        // - Record is new
-        $doAudit = (
-            !$this->exists() &&
-            $user && (
-                $user->getIsSA() ||
-                $user->getIsCISO() ||
-                $user->getIsAdmin()
-            )
-        );
-
-        $userData = '';
-
-        if ($user) {
-            $groups = $user->Groups()->column('Title');
-            $userData = implode('. ', [
-                'Email: ' . $user->Email,
-                'Group(s): ' . ($groups ? implode(' : ', $groups) : 'N/A'),
-            ]);
-        }
-
-        if ($doAudit) {
-            $msg = sprintf('"%s" was created', $this->Name);
-            $this->auditService->commit('Create', $msg, $this, $userData);
-        }
-
-        // Auditing: CHANGE, when:
-        // - User is present AND
-        // - User is an Administrator
-        // - Record exists
-        $doAudit = (
-            $this->exists() &&
-            $user &&
-            $user->getIsAdmin()
-        );
-
-        if ($doAudit) {
-            $msg = sprintf('"%s" was modified', $this->Name);
-            $groups = $user->Groups()->column('Title');
-            $this->auditService->commit('Change', $msg, $this, $userData);
-        }
+        $this->auditService->audit($this);
     }
 
     /**
@@ -677,6 +694,11 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
                     $this->Name
                 )
             );
+        }
+
+        // validation for StakeholdersGroup
+        if ($this->IsStakeholdersSelected == 'Yes' && !$this->StakeholdersGroupID) {
+            $result->addError('Please select stakeholders group.');
         }
 
         return $result;
@@ -736,7 +758,6 @@ class Task extends DataObject implements ScaffoldingProvider, PermissionProvider
         return $admin->Link('NZTA-SDLT-Model-Task/EditForm/field/NZTA-SDLT-Model-Task/item/'
             . $this->ID . '/' . $action);
     }
-
 
     /**
      * check target is remote (JIRA Cloud)

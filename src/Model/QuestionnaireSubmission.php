@@ -120,6 +120,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         'ApprovalOverrideBySecurityArchitect' => 'Boolean',
         'QuestionnaireLevelTaskIDs' => 'Varchar(255)',
         'RiskResultData' => 'Text',
+        'IsAllTheTasksCompletedEmailSent' => 'Boolean',
     ];
     // @codingStandardsIgnoreEnd
 
@@ -139,6 +140,13 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
      */
     private static $has_many = [
         'TaskSubmissions' => TaskSubmission::class
+    ];
+
+    /**
+     * @var array
+     */
+    private static $many_many = [
+        'Collaborators' => Member::class,
     ];
 
     /**
@@ -589,7 +597,8 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                 $fields->dataFieldByName('SubmitterName'),
                 $fields->dataFieldByName('SubmitterEmail'),
                 $fields->dataFieldByName('IsStartLinkEmailSent'),
-                $fields->dataFieldByName('IsSubmitLinkEmailSent')
+                $fields->dataFieldByName('IsSubmitLinkEmailSent'),
+                $fields->dataFieldByName('IsAllTheTasksCompletedEmailSent')
             ]
         );
 
@@ -757,7 +766,8 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                 'ApprovalOverrideBySecurityArchitect',
                 'RiskResultData',
                 'ReleaseDate',
-                'HideWeightsAndScore'
+                'HideWeightsAndScore',
+                'CollaboratorList'
             ]);
 
         $submissionScaffolder
@@ -880,7 +890,10 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                     // data for my sumission list
                     if ($userID && $pageType == 'my_submission_list') {
                         $data = QuestionnaireSubmission::get()
-                            ->filter(['UserID' => $userID])
+                            ->filterAny([
+                                'UserID' => $userID,
+                                'Collaborators.ID' => $userID
+                            ])
                             ->exclude('QuestionnaireStatus', QuestionnaireSubmission::STATUS_EXPIRED);
                     }
 
@@ -915,6 +928,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         // Approve/Deny for Security Architect and Chief Information Security Officer
         $this->updateQuestionnaireOnApproveByGroupMember($scaffolder);
         $this->updateQuestionnaireOnDenyByGroupMember($scaffolder);
+        $this->addCollaborator($scaffolder);
 
         return $scaffolder;
     }
@@ -1664,6 +1678,72 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                 }
             })
             ->end();
+    }
+
+    /**
+     * this api will call to add
+     *
+     * @param SchemaScaffolder $scaffolder SchemaScaffolder
+     *
+     * @return void
+     */
+    public function addCollaborator(SchemaScaffolder $scaffolder)
+    {
+        $scaffolder
+            ->mutation('addCollaborator', QuestionnaireSubmission::class)
+            ->addArgs([
+                'ID' => 'ID!',
+                'SelectedCollaborator' => 'String',
+            ])
+            ->setResolver(new class implements ResolverInterface {
+                /**
+                 * Invoked by the Executor class to resolve this mutation / query
+                 * @see Executor
+                 *
+                 * @param mixed       $object  object
+                 * @param array       $args    args
+                 * @param mixed       $context context
+                 * @param ResolveInfo $info    info
+                 * @throws Exception
+                 * @return mixed
+                 */
+                public function resolve($object, array $args, $context, ResolveInfo $info)
+                {
+                    QuestionnaireValidation::is_user_logged_in();
+
+                    $questionnaireSubmission =
+                        QuestionnaireSubmission::validate_before_updating_questionnaire_submission($args['ID']);
+
+                    $selectedCollaboratorIDs = json_decode(base64_decode($args['SelectedCollaborator']));
+                    $questionnaireSubmission->addCollaboratorRelationship($selectedCollaboratorIDs);
+                    return $questionnaireSubmission;
+                }
+            })
+            ->end();
+    }
+
+    /**
+     * add and remove collaborator
+     *
+     * @param array $selectedCollaboratorIDs selected Collaborator Ids
+     *
+     * @return void
+     */
+    public function addCollaboratorRelationship($selectedCollaboratorIDs)
+    {
+        $collaboratorInDB = $this->Collaborators()->column('ID');
+        $addCollaboratorIDs = array_diff($selectedCollaboratorIDs, $collaboratorInDB);
+        $removeCollaboratorIDs = array_diff($collaboratorInDB, $selectedCollaboratorIDs);
+
+        if (!empty ($addCollaboratorIDs)) {
+            $this->Collaborators()->addMany($addCollaboratorIDs);
+        }
+
+        if (!empty ($removeCollaboratorIDs)) {
+            $this->Collaborators()->removeMany($removeCollaboratorIDs);
+        }
+
+        $this->write();
     }
 
     /**
@@ -2714,5 +2794,22 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         $string = str_replace('{$productName}', $productName, $string);
 
         return $string;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCollaboratorList()
+    {
+        $collaborators = $this->Collaborators();
+        $collaboratorList = [];
+
+        foreach ($collaborators as $collaborator) {
+            $temp['ID'] = $collaborator->ID;
+            $temp['Name'] = trim($collaborator->FirstName . ' ' . $collaborator->Surname);
+            $collaboratorList[] = $temp;
+        }
+
+        return json_encode($collaboratorList);
     }
 }
