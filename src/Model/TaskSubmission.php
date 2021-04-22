@@ -787,7 +787,9 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $allAnswerData[$args['QuestionID']] = $questionAnswerData;
                     $submission->AnswerData = json_encode($allAnswerData);
                     $submission->Status = TaskSubmission::STATUS_IN_PROGRESS;
-                    $submission->completedByID = (int)Security::getCurrentUser()->ID;
+                    $submission->completedByID = (int)(
+                        Security::getCurrentUser() ? Security::getCurrentUser()->ID : 0
+                    );
 
                     $submission->write();
 
