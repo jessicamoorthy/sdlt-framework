@@ -960,7 +960,13 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->Status = TaskSubmission::STATUS_COMPLETE;
-                    $submission->completedByID = $member->ID;
+                    // If it's a vendor task and completed by anonymous user,
+                    // mark the userid to be 0.
+                    if ($member) {
+                        $submission->completedByID = $member->ID;
+                    } else {
+                        $submission->completedByID = 0;
+                    }
                     $submission->sendEmailToStakeholder();
                     $submission->RiskResultData = $submission->getRiskResultBasedOnAnswer();
 
