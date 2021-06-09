@@ -16,6 +16,7 @@ namespace NZTA\SDLT\Extension;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Security\Group;
 use NZTA\SDLT\Model\Questionnaire;
+use SilverStripe\SiteConfig\SiteConfig;
 
 /**
  * Class GroupExtension
@@ -50,5 +51,17 @@ class GroupExtension extends DataExtension
         }
 
         return $groupInDB;
+    }
+
+    public static function security_architect_group()
+    {
+        $config = SiteConfig::current_site_config();
+        return $config->SecurityArchitectGroup();
+    }
+
+    public static function ciso_group()
+    {
+        $config = SiteConfig::current_site_config();
+        return $config->CisoGroup();
     }
 }

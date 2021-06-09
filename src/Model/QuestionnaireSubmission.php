@@ -15,7 +15,6 @@ namespace NZTA\SDLT\Model;
 
 use Exception;
 use GraphQL\Type\Definition\ResolveInfo;
-use NZTA\SDLT\Constant\UserGroupConstant;
 use NZTA\SDLT\GraphQL\GraphQLAuthFailure;
 use SilverStripe\GraphQL\OperationResolver;
 use SilverStripe\GraphQL\Scaffolding\Interfaces\ResolverInterface;
@@ -54,6 +53,7 @@ use NZTA\SDLT\Traits\SDLTSubmissionJson;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\DateField;
+use NZTA\SDLT\Extension\GroupExtension;
 
 /**
  * Class QuestionnaireSubmission
@@ -603,7 +603,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         );
 
         // memeber list for SA group
-        $group = Group::get()->filter('code', UserGroupConstant::GROUP_CODE_SA)->first();
+        $group = GroupExtension::security_architect_group();
 
         $saMemberList = [];
 
@@ -630,7 +630,8 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         );
 
         // memeber list for CISO group
-        $group = Group::get()->filter('code', UserGroupConstant::GROUP_CODE_CISO)->first();
+        $group = GroupExtension::ciso_group();
+;
 
         $cisoMemberList = [];
 
@@ -1406,9 +1407,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
 
                     if (!$questionnaireSubmission->IsEmailSentToSecurityArchitect) {
                         $members = $questionnaireSubmission
-                            ->getApprovalMembersListByGroup(
-                                UserGroupConstant::GROUP_CODE_SA
-                            );
+                            ->getApprovalMembersListByGroup(GroupExtension::security_architect_group());
 
                         if (!$members) {
                             throw new Exception('Please add member in Security architect group.');
@@ -2049,7 +2048,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
         }
 
         // update SA member details
-        if ($accessDetail['group'] == UserGroupConstant::GROUP_CODE_SA) {
+        if ($accessDetail['group'] == GroupExtension::security_architect_group()->Code) {
             // update Security-Architect member details
             $this->updateSecurityArchitectDetail($member, $status);
 
@@ -2065,7 +2064,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
                     if ($member->getIsCISO()) {
                         $this->updateCisoDetail($member, $status);
                     } else {
-                        $cisoMembers = $this->getApprovalMembersListByGroup(UserGroupConstant::GROUP_CODE_CISO);
+                        $cisoMembers = $this->getApprovalMembersListByGroup(GroupExtension::ciso_group());
                     }
 
                     // if member is business owner then approved a questioonaire as BO as well
@@ -2116,7 +2115,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
             }
 
             $this->write();
-        } elseif ($accessDetail['group'] == UserGroupConstant::GROUP_CODE_CISO) {
+        } elseif ($accessDetail['group'] == GroupExtension::ciso_group()->Code) {
             // update CISO member details
             $this->updateCisoDetail($member, $status);
             $this->write();
@@ -2277,7 +2276,6 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
      */
     public function getApprovalMembersListByGroup($group)
     {
-        $group = Group::get()->filter('code', $group)->first();
         if ($group) {
             $members = $group->Members();
         }
@@ -2573,7 +2571,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
     */
     public function getSecurityArchitectAccessDetail($member)
     {
-        $group = UserGroupConstant::GROUP_CODE_SA;
+        $group = GroupExtension::security_architect_group()->Code;
 
         if (!$member->getIsSA()) {
             return [
@@ -2649,7 +2647,7 @@ class QuestionnaireSubmission extends DataObject implements ScaffoldingProvider
     */
     public function getCISOAccessDetail($member)
     {
-        $group = UserGroupConstant::GROUP_CODE_CISO;
+        $group = GroupExtension::ciso_group()->Code;
 
         // if member is not belongs to ciso group
         if (!$member->getIsCISO()) {

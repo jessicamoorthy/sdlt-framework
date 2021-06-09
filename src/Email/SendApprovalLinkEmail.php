@@ -17,6 +17,7 @@ use SilverStripe\Control\Email\Email;
 use NZTA\SDLT\Model\QuestionnaireEmail;
 use NZTA\SDLT\Constant\UserGroupConstant;
 use SilverStripe\Security\Member;
+use NZTA\SDLT\Extension\GroupExtension;
 
 /**
  * Send Approval Link Email

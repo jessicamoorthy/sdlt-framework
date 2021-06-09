@@ -15,7 +15,6 @@ namespace NZTA\SDLT\ModelAdmin;
 
 use Exception;
 use NZTA\SDLT\Email\SendApprovalLinkEmail;
-use NZTA\SDLT\Constant\UserGroupConstant;
 use SilverStripe\Forms\GridField\GridFieldDetailForm_ItemRequest;
 
 /**
@@ -76,11 +75,11 @@ class QuestionnaireSubmissionDetailForm_ItemRequest extends GridFieldDetailForm_
         }
 
         if ($questionnaireSubmission->SecurityArchitectApprovalStatus == "pending") {
-            $members = $questionnaireSubmission->getApprovalMembersListByGroup(UserGroupConstant::GROUP_CODE_SA);
+            $members = $questionnaireSubmission->getApprovalMembersListByGroup(GroupExtension::security_architect_group());
             new SendApprovalLinkEmail($this->record, $members, '');
             $form->sessionMessage('Email sent to the Security Architect group members.', 'good');
         } else {
-            $members = $questionnaireSubmission->getApprovalMembersListByGroup(UserGroupConstant::GROUP_CODE_CISO);
+            $members = $questionnaireSubmission->getApprovalMembersListByGroup(GroupExtension::ciso_group());
 
             if ($questionnaireSubmission->CisoApprovalStatus == "pending" &&
                 $questionnaireSubmission->BusinessOwnerApprovalStatus == "pending") {
