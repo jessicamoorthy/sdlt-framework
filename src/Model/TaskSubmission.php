@@ -15,7 +15,6 @@ namespace NZTA\SDLT\Model;
 
 use Exception;
 use GraphQL\Type\Definition\ResolveInfo;
-use NZTA\SDLT\Constant\UserGroupConstant;
 use NZTA\SDLT\GraphQL\GraphQLAuthFailure;
 use Ramsey\Uuid\Uuid;
 use SilverStripe\Forms\FieldList;
@@ -48,6 +47,7 @@ use SilverStripe\SiteConfig\SiteConfig;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
+use NZTA\SDLT\Extension\GroupExtension;
 
 /**
  * Class TaskSubmission
@@ -1408,7 +1408,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
 
             $isSA = $member
                 ->Groups()
-                ->filter('Code', UserGroupConstant::GROUP_CODE_SA)
+                ->filter('Code', GroupExtension::security_architect_group()->Code)
                 ->exists();
 
             $isCollborator = $taskSubmission->getIsTaskCollborator();

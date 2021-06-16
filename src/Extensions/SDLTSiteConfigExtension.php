@@ -28,6 +28,8 @@ use SilverStripe\Forms\ToggleCompositeField;
 use SilverStripe\Forms\FormField;
 use SilverStripe\Forms\EmailField;
 use SilverStripe\SiteConfig\SiteConfig;
+use SilverStripe\Security\Group;
+use SilverStripe\Forms\DropdownField;
 
 /**
  * Site Config Extension for SDLT Tool
@@ -64,6 +66,8 @@ class SDLTSiteConfigExtension extends DataExtension implements ScaffoldingProvid
         'QuestionnairePdfHeaderImage' => Image::class,
         'QuestionnairePdfFooterImage' => Image::class,
         'FavIcon' => Image::class,
+        'SecurityArchitectGroup' => Group::class,
+        'CisoGroup' => Group::class
     ];
 
     /**
@@ -238,6 +242,27 @@ class SDLTSiteConfigExtension extends DataExtension implements ScaffoldingProvid
                     'FooterCopyrightText',
                     'Footer Text'
                 )
+            ]
+        );
+
+        //workflow tab
+        $fields->addFieldsToTab(
+            'Root.Workflow Emails',
+            [
+                DropdownField::create(
+                    'SecurityArchitectGroupID',
+                    'Security Architect Group',
+                    Group::get()->map('ID', 'Title')
+                )
+                ->setDescription('These people will receive emails when
+                a submission is sent for approval once first submitted.'),
+                DropdownField::create(
+                    'CisoGroupID',
+                    'Ciso Group',
+                    Group::get()->map('ID', 'Title')
+                )
+                ->setDescription('These users in this group will receive emails when a submission
+                is sent for approval once the above security architect/analysts group has approved.')
             ]
         );
     }
