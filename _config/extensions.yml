@@ -4,9 +4,7 @@ SilverStripe\SiteConfig\SiteConfig:
 SilverStripe\Security\Group:
   extensions:
     - NZTA\SDLT\Extension\GroupExtension
-SilverStripe\Security\Group:
-extensions:
-- NZTA\SDLT\Extension\GroupExtensionSilverStripe\Security\Member:
+SilverStripe\Security\Member:
   extensions:
     - 'NZTA\SDLT\Extension\ShowLoginAttemptsExtension'
     - 'NZTA\SDLT\Extension\UserRoleExtension'
