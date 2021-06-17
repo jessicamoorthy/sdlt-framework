@@ -1,7 +1,12 @@
 SilverStripe\SiteConfig\SiteConfig:
   extensions:
     - 'NZTA\SDLT\Extension\SDLTSiteConfigExtension'
-SilverStripe\Security\Member:
+SilverStripe\Security\Group:
+  extensions:
+    - NZTA\SDLT\Extension\GroupExtension
+SilverStripe\Security\Group:
+extensions:
+- NZTA\SDLT\Extension\GroupExtensionSilverStripe\Security\Member:
   extensions:
     - 'NZTA\SDLT\Extension\ShowLoginAttemptsExtension'
     - 'NZTA\SDLT\Extension\UserRoleExtension'
@@ -11,9 +16,6 @@ NZTA\SDLT\Model\ImpactThreshold:
 NZTA\SDLT\Model\LikelihoodThreshold:
   extensions:
     - NZTA\SDLT\Extension\ThresholdExtension
-SilverStripe\Security\Group:
-  extensions:
-    - NZTA\SDLT\Extension\GroupExtension
 SilverStripe\Security\Member:
   extensions:
     - NZTA\SDLT\Extension\MemberExtension
