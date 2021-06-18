@@ -18,7 +18,7 @@ SilverStripe\Core\Injector\Injector:
       Port: 587
       Encryption: tls
 ---
-Except:
+Only:
   environment: 'dev'
 ---
 SilverStripe\Core\Injector\Injector:
