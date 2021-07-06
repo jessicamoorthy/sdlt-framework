@@ -15,6 +15,7 @@ namespace NZTA\SDLT\Extension;
 
 use NZTA\SDLT\Constant\UserGroupConstant;
 use SilverStripe\ORM\DataExtension;
+use NZTA\SDLT\Extension\GroupExtension;
 
 /**
  * Class UserRoleExtension
@@ -31,7 +32,7 @@ class UserRoleExtension extends DataExtension
         // SA and CISO can view it
         return $this->owner
             ->Groups()
-            ->filter('Code', UserGroupConstant::GROUP_CODE_SA)
+            ->filter('Code', GroupExtension::security_architect_group()->Code)
             ->exists();
     }
 
@@ -44,7 +45,7 @@ class UserRoleExtension extends DataExtension
     {
         return $this->owner
             ->Groups()
-            ->filter('Code', UserGroupConstant::GROUP_CODE_CISO)
+            ->filter('Code', GroupExtension::ciso_group()->Code)
             ->exists();
     }
 
@@ -95,6 +96,4 @@ class UserRoleExtension extends DataExtension
                 return '';
         }
     }
-
 }
-

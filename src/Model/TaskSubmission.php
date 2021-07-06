@@ -15,7 +15,6 @@ namespace NZTA\SDLT\Model;
 
 use Exception;
 use GraphQL\Type\Definition\ResolveInfo;
-use NZTA\SDLT\Constant\UserGroupConstant;
 use NZTA\SDLT\GraphQL\GraphQLAuthFailure;
 use Ramsey\Uuid\Uuid;
 use SilverStripe\Forms\FieldList;
@@ -48,6 +47,7 @@ use SilverStripe\SiteConfig\SiteConfig;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
+use NZTA\SDLT\Extension\GroupExtension;
 
 /**
  * Class TaskSubmission
@@ -787,7 +787,9 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     $allAnswerData[$args['QuestionID']] = $questionAnswerData;
                     $submission->AnswerData = json_encode($allAnswerData);
                     $submission->Status = TaskSubmission::STATUS_IN_PROGRESS;
-                    $submission->completedByID = (int)Security::getCurrentUser()->ID;
+                    $submission->completedByID = (int)(
+                        Security::getCurrentUser() ? Security::getCurrentUser()->ID : 0
+                    );
 
                     $submission->write();
 
@@ -958,7 +960,13 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
                     }
 
                     $submission->Status = TaskSubmission::STATUS_COMPLETE;
-                    $submission->completedByID = $member->ID;
+                    // If it's a vendor task and completed by anonymous user,
+                    // mark the userid to be 0.
+                    if ($member) {
+                        $submission->completedByID = $member->ID;
+                    } else {
+                        $submission->completedByID = 0;
+                    }
                     $submission->sendEmailToStakeholder();
                     $submission->RiskResultData = $submission->getRiskResultBasedOnAnswer();
 
@@ -1400,7 +1408,7 @@ class TaskSubmission extends DataObject implements ScaffoldingProvider
 
             $isSA = $member
                 ->Groups()
-                ->filter('Code', UserGroupConstant::GROUP_CODE_SA)
+                ->filter('Code', GroupExtension::security_architect_group()->Code)
                 ->exists();
 
             $isCollborator = $taskSubmission->getIsTaskCollborator();
