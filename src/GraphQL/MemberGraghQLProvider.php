@@ -20,6 +20,7 @@ use GraphQL\Type\Definition\ResolveInfo;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use SilverStripe\Core\Convert;
+use SilverStripe\Control\Director;
 
 /**
  * Class MemberGraphQLProvider
@@ -42,16 +43,24 @@ class MemberGraphQLProvider implements ScaffoldingProvider
      */
     public function provideGraphQLScaffoldingForEntityType(SchemaScaffolder $scaffolder)
     {
+        // we have add this consition to resolve dev/build error for
+        // Siteconfig.SecurityArchitectGroupID field not found
+        if (Director::is_cli()) {
+            $fieldsNames = [];
+        } else {
+            $fieldsNames = [
+               'ID',
+               'Email',
+               'FirstName',
+               'Surname',
+               'IsSA',
+               'IsCISO'
+            ];
+        }
+
         $dataObjectScaffolder = $scaffolder
             ->type(Member::class)
-            ->addFields([
-                'ID',
-                'Email',
-                'FirstName',
-                'Surname',
-                'IsSA',
-                'IsCISO'
-            ]);
+            ->addFields($fieldsNames);
 
         return $dataObjectScaffolder;
     }
